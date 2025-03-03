@@ -41,10 +41,10 @@ export const MainStackNavigator = () => {
 }
 
 
-const AuthState = ({ Children }: any) => {
+const AuthState = ({ children }: any) => {
     return (
         <AuthProvider>
-            {Children}
+            {children}
         </AuthProvider>
     )
 }
