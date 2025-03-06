@@ -5,7 +5,7 @@ import DefaultRoundedButton from '../../../componets/DefaultRoundedButton';
 import { StackScreenProps } from '@react-navigation/stack';
 import { RootStackParamlist } from '../../../navigator/MainStackNavigatior';
 import styles from './styles'
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import EmailValidator from '../../../Utils/EmailValidator';
 import { ApiRequestHandler } from '../../../../data/sources/remote/api/ApiRequestHandler';
 import { AuthResponse } from '../../../../domain/models/AuthResponse';
@@ -29,6 +29,20 @@ export default function LoginScreen({ navigation, route }: Props) {
     const loginViewModel = container.resolve('loginViewModel');
     const { authResponse, saveAuthSession } = useAuth();
 
+    useEffect(() => {
+        if (authResponse !== null && authResponse !== undefined) {
+                if(authResponse.user.roles!.length > 1){ 
+            navigation.replace('RolesScreen');
+           
+           }else{
+            navigation.replace('ClientHomeScreen');
+            
+           } 
+        }
+   
+
+    }, [authResponse])
+
     const handleLogin = async () => {
         if (email === '' || password === '') {
             Alert.alert('Error', 'El email y el pasword no pueden estar vacios')
@@ -40,12 +54,9 @@ export default function LoginScreen({ navigation, route }: Props) {
         }
         const response = await loginViewModel.login(email, password)
         if ('token' in response) {//login exitoso
-            saveAuthSession(response);
-            console.log('RESPONSE: Login exitoso');
+            saveAuthSession(response);      
         }
-
         console.log('RESPONSE: ', response)
-
     }
 
 
