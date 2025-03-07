@@ -9,6 +9,8 @@ import ClientHomeScreen from "../screens/client/home/ClientHomeScreen";
 import DeliveryDriverHomeScreen from "../screens/delivery-driver/home/DeliveryDriverHomeScreen";
 import AdminHomeScreen from "../screens/admin/home/AdminHomeScreen";
 import SuperAdminHomeScreen from "../screens/merchant/home/SuperAdminHomeScreen";
+import { createDrawerNavigator } from "@react-navigation/drawer";
+import ClientSearchMapScreen from "../screens/client/searchMap/ClientSearchMapScreen";
 
 
 export type RootStackParamlist = {
@@ -19,11 +21,12 @@ export type RootStackParamlist = {
     DeliveryDriverHomeScreen: undefined,
     AdminHomeScreen: undefined,
     SuperAdminHomeScreen: undefined,
+    ClientSearchMapScreen: undefined,
 
 }
 
 const Stack = createNativeStackNavigator<RootStackParamlist>();
-
+const Drawer = createDrawerNavigator<RootStackParamlist>();
 export const MainStackNavigator = () => {
     const authUseCases = container.resolve('authUseCases');
     return (
@@ -61,7 +64,7 @@ export const MainStackNavigator = () => {
                         headerShown: false
                     }}
                     name="ClientHomeScreen"
-                    component={ClientHomeScreen}
+                    component={ClientDrawerNavigator}
                 />
 
                 <Stack.Screen
@@ -93,4 +96,10 @@ export const MainStackNavigator = () => {
     )
 }
 
-
+const ClientDrawerNavigator = () => {
+    return (
+        <Drawer.Navigator initialRouteName="ClientSearchMapScreen">
+            <Drawer.Screen name="ClientSearchMapScreen" component={ClientSearchMapScreen} />
+        </Drawer.Navigator>
+    );
+}

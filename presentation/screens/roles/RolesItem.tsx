@@ -16,8 +16,8 @@ export default function RolesItem({ navigation, role }: Props) {
 
         <TouchableOpacity
             onPress={() => {
-                alert(`Role ID: ${role.id}`);
-                console.log(role.id)
+                
+                
                 if (role.id === 'CLIENT') {                    
                     navigation.replace('ClientHomeScreen')
                 }
