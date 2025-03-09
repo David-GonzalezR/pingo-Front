@@ -28,6 +28,7 @@ export const AuthProvider = ({ children, authUseCases }: any) => {
 
     const getAuthSession = async () => {
        const authData = await authUseCases.getAuthSession.execute();
+       console.log('📦 Datos recuperados del almacenamiento local:', authData);
         console.log('Session Data: ', authData)
         setAuthResponse(authData)
     }

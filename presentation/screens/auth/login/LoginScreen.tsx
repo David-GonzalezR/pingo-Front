@@ -31,11 +31,12 @@ export default function LoginScreen({ navigation, route }: Props) {
 
     useEffect(() => {
         if (authResponse !== null && authResponse !== undefined) {
+            console.log("👥 Cantidad de roles:", authResponse.user.roles?.length);
                 if(authResponse.user.roles!.length > 1){ 
-            navigation.replace('RolesScreen');
+            navigation.navigate('RolesScreen');
            
            }else{
-            navigation.replace('ClientHomeScreen');
+            navigation.navigate('ClientHomeScreen');
             
            } 
         }
@@ -57,6 +58,7 @@ export default function LoginScreen({ navigation, route }: Props) {
             saveAuthSession(response);      
         }
         console.log('RESPONSE: ', response)
+        
     }
 
 

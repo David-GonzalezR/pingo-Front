@@ -13,12 +13,29 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist":{
+        "NSLocationWhenInUseUsageDescription":"Esta app utiliza tu ubicación para mostrarte tu ubicación en el mapa"
+        
+      },
+      "config":{
+        "googleMapsApiKey":"AIzaSyBRU1AcblMMEyUQraCnVPo3S8YZ_0u-C6U"
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
+      },
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCES_BACKGROUND_LOCATION"
+      ],
+      "config":{
+        "googleMaps":{
+          "apiKey":"AIzaSyBRU1AcblMMEyUQraCnVPo3S8YZ_0u-C6U"
+        }
       }
     },
     "web": {
