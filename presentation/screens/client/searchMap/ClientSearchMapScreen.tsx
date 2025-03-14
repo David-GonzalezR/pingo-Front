@@ -1,12 +1,26 @@
-import { Text, View } from "react-native";
-import styles from './Styles';
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
+import { Text, View, TextInput, FlatList, TouchableOpacity, Image, Dimensions } from "react-native";
 import MapView, { Marker, Region } from "react-native-maps";
 import * as Location from 'expo-location';
+import styles from './Styles';
+
+const { width, height } = Dimensions.get("window");
+const ASPECT_RATIO = width / height;
+const LATITUDE_DELTA = 0.001;
+const LONGITUDE_DELTA = LATITUDE_DELTA * ASPECT_RATIO;
+
+const API_URL = "https://places.googleapis.com/v1/places:autocomplete";
+const REVERSE_GEOCODE_URL = "https://maps.googleapis.com/maps/api/geocode/json";
+const API_KEY = "AIzaSyBRU1AcblMMEyUQraCnVPo3S8YZ_0u-C6U";
 
 export default function ClientSearchMapScreen() {
     const [location, setLocation] = useState<Region | undefined>(undefined);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    const [selectedPlace, setSelectedPlace] = useState<Region | undefined>(undefined);
+    const [input, setInput] = useState(""); 
+    const [suggestions, setSuggestions] = useState<any[]>([]); 
+    const [address, setAddress] = useState(""); 
+    const mapRef = React.useRef<MapView>(null);
 
     useEffect(() => {
         (async () => {
@@ -17,22 +31,101 @@ export default function ClientSearchMapScreen() {
                     return;
                 }
 
-                let location = await Location.getCurrentPositionAsync({
-                    accuracy: Location.Accuracy.Highest, // Mayor precisión posible
-                });
+                let location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Highest });
 
-                setLocation({
+                const region = {
                     latitude: location.coords.latitude,
                     longitude: location.coords.longitude,
-                    latitudeDelta: 0.005, // Zoom más cercano
-                    longitudeDelta: 0.005,
-                });
+                    latitudeDelta: LATITUDE_DELTA,
+                    longitudeDelta: LONGITUDE_DELTA,
+                };
+
+                setLocation(region);
+                fetchAddress(region.latitude, region.longitude);
             } catch (error) {
                 setErrorMsg('No se pudo obtener la ubicación.');
                 console.error(error);
             }
         })();
     }, []);
+
+    const fetchAddress = async (latitude: number, longitude: number) => {
+        try {
+            const response = await fetch(`${REVERSE_GEOCODE_URL}?latlng=${latitude},${longitude}&key=${API_KEY}`);
+            const result = await response.json();
+
+            if (result.status === "OK" && result.results.length > 0) {
+                const formattedAddress = result.results[0].formatted_address;
+                setAddress(`📍 Recogida: ${formattedAddress}`);
+            } else {
+                setAddress("📍 Recogida: Dirección no disponible");
+            }
+        } catch (error) {
+            console.error("⚠️ Error obteniendo dirección:", error);
+            setAddress("📍 Recogida: Error al obtener la dirección");
+        }
+    };
+
+    const fetchAutocompleteSuggestions = async (text: string) => {
+        if (text.length < 3) {
+            setSuggestions([]);
+            return;
+        }
+
+        try {
+            const response = await fetch(API_URL, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-Goog-Api-Key": API_KEY,
+                    "X-Goog-FieldMask": "suggestions.placePrediction"
+                },
+                body: JSON.stringify({
+                    input: text,
+                    languageCode: "es",
+                    locationBias: {
+                        circle: {
+                            center: {
+                                latitude: location?.latitude,
+                                longitude: location?.longitude
+                            },
+                            radius: 10000.0 
+                        }
+                    }
+                })
+            });
+
+            const result = await response.json();
+            setSuggestions(result.suggestions || []);
+        } catch (error) {
+            console.error("⚠️ Error en Autocomplete:", error);
+        }
+    };
+
+    const fetchPlaceDetails = async (placeId: string) => {
+        try {
+            const response = await fetch(`https://places.googleapis.com/v1/places/${placeId}?fields=location&key=${API_KEY}`);
+            const result = await response.json();
+
+            if (result.location) {
+                const { latitude, longitude } = result.location;
+
+                const newRegion = {
+                    latitude,
+                    longitude,
+                    latitudeDelta: 0.0001,
+                    longitudeDelta: LONGITUDE_DELTA,
+                };
+
+                setSelectedPlace(newRegion);
+                setSuggestions([]); // Ocultar la lista de sugerencias
+                mapRef.current?.animateToRegion(newRegion, 1000); 
+                fetchAddress(latitude, longitude);
+            }
+        } catch (error) {
+            console.error("⚠️ Error obteniendo detalles del lugar:", error);
+        }
+    };
 
     if (errorMsg) {
         return (
@@ -52,12 +145,64 @@ export default function ClientSearchMapScreen() {
 
     return (
         <View style={styles.container}>
-            <MapView style={styles.map} region={location}>
-                <Marker coordinate={{
-                    latitude: location.latitude,
-                    longitude: location.longitude
-                }} title="Mi ubicación" />
-            </MapView>
+            <TextInput
+                style={styles.input}
+                placeholder="Recoger en..."
+                value={input}
+                onChangeText={(text) => {
+                    setInput(text);
+                    fetchAutocompleteSuggestions(text);
+                }}
+            />
+
+            {suggestions.length > 0 && (
+                <FlatList
+                    data={suggestions}
+                    keyExtractor={(item) => item.placePrediction.placeId}
+                    keyboardShouldPersistTaps="handled"
+                    renderItem={({ item }) => {
+                        const mainText = item.placePrediction.structuredFormat?.mainText?.text || "Sin nombre";
+                        const secondaryText = item.placePrediction.structuredFormat?.secondaryText?.text || "Sin ubicación";
+
+                        return (
+                            <TouchableOpacity onPress={() => fetchPlaceDetails(item.placePrediction.placeId)}>
+                                <View style={{ padding: 10, borderBottomWidth: 1, borderColor: "#ccc", backgroundColor: "white" }}>
+                                    <Text style={{ fontSize: 16, fontWeight: "bold" }}>{mainText}</Text>
+                                    <Text style={{ fontSize: 14, color: "gray" }}>{secondaryText}</Text>
+                                </View>
+                            </TouchableOpacity>
+                        );
+                    }}
+                />
+            )}
+
+            <TextInput
+                style={styles.input}
+                placeholder="Ubicación seleccionada..."
+                value={address}
+                editable={false}
+            />
+
+            <View style={styles.mapContainer}>
+            <MapView
+    ref={mapRef}
+    style={styles.map}
+    initialRegion={location}
+    onRegionChangeComplete={(region) => {
+        setSelectedPlace(region);
+        fetchAddress(region.latitude, region.longitude);
+    }}
+>
+   {/*} {selectedPlace && input.length > 0 && (  
+        <Marker coordinate={selectedPlace} title="Lugar seleccionado" />
+    )}*/}
+</MapView>
+
+
+                <View style={styles.pinContainer}>
+                    <Image source={require('../../../../assets/pin_red.png')} style={styles.pin} />
+                </View>
+            </View>
         </View>
     );
 }

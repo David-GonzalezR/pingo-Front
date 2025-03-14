@@ -31,12 +31,12 @@ export default function LoginScreen({ navigation, route }: Props) {
 
     useEffect(() => {
         if (authResponse !== null && authResponse !== undefined) {
-            console.log("👥 Cantidad de roles:", authResponse.user.roles?.length);
+            
                 if(authResponse.user.roles!.length > 1){ 
-            navigation.navigate('RolesScreen');
+            navigation.replace('RolesScreen');
            
            }else{
-            navigation.navigate('ClientHomeScreen');
+            navigation.replace('ClientHomeScreen');
             
            } 
         }
