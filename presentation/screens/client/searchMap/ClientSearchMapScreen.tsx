@@ -3,6 +3,7 @@ import { Text, View, TextInput, FlatList, TouchableOpacity, Image, Dimensions } 
 import MapView, { Marker, Region } from "react-native-maps";
 import * as Location from 'expo-location';
 import styles from './Styles';
+import { GoogleMapsApiKey } from "../../../../data/sources/remote/api/googleMapsApiKey";
 
 const { width, height } = Dimensions.get("window");
 const ASPECT_RATIO = width / height;
@@ -11,15 +12,13 @@ const LONGITUDE_DELTA = LATITUDE_DELTA * ASPECT_RATIO;
 
 const API_URL = "https://places.googleapis.com/v1/places:autocomplete";
 const REVERSE_GEOCODE_URL = "https://maps.googleapis.com/maps/api/geocode/json";
-const API_KEY = "AIzaSyBRU1AcblMMEyUQraCnVPo3S8YZ_0u-C6U";
+const API_KEY = GoogleMapsApiKey; 
 
 export default function ClientSearchMapScreen() {
     const [location, setLocation] = useState<Region | undefined>(undefined);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
-    const [selectedPlace, setSelectedPlace] = useState<Region | undefined>(undefined);
-    const [input, setInput] = useState(""); 
+    const [input, setInput] = useState("");  // Ahora también mostrará la dirección seleccionada
     const [suggestions, setSuggestions] = useState<any[]>([]); 
-    const [address, setAddress] = useState(""); 
     const mapRef = React.useRef<MapView>(null);
 
     useEffect(() => {
@@ -32,6 +31,7 @@ export default function ClientSearchMapScreen() {
                 }
 
                 let location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Highest });
+                console.log(`📍 Ubicación inicial: Latitud ${location.coords.latitude}, Longitud ${location.coords.longitude}`);
 
                 const region = {
                     latitude: location.coords.latitude,
@@ -56,13 +56,14 @@ export default function ClientSearchMapScreen() {
 
             if (result.status === "OK" && result.results.length > 0) {
                 const formattedAddress = result.results[0].formatted_address;
-                setAddress(`📍 Recogida: ${formattedAddress}`);
+                setInput(`📍 ${formattedAddress}`);  //muestra la dirección seleccionada
+                console.log(`📍 Ubicación obtenida: Latitud ${latitude}, Longitud ${longitude}`);
             } else {
-                setAddress("📍 Recogida: Dirección no disponible");
+                setInput("📍 Dirección no disponible");
             }
         } catch (error) {
             console.error("⚠️ Error obteniendo dirección:", error);
-            setAddress("📍 Recogida: Error al obtener la dirección");
+            setInput("📍 Error al obtener la dirección");
         }
     };
 
@@ -110,6 +111,8 @@ export default function ClientSearchMapScreen() {
             if (result.location) {
                 const { latitude, longitude } = result.location;
 
+                console.log(`📍 Ubicación seleccionada: Latitud ${latitude}, Longitud ${longitude}`);
+
                 const newRegion = {
                     latitude,
                     longitude,
@@ -117,8 +120,8 @@ export default function ClientSearchMapScreen() {
                     longitudeDelta: LONGITUDE_DELTA,
                 };
 
-                setSelectedPlace(newRegion);
-                setSuggestions([]); // Ocultar la lista de sugerencias
+                setLocation(newRegion);
+                setSuggestions([]); 
                 mapRef.current?.animateToRegion(newRegion, 1000); 
                 fetchAddress(latitude, longitude);
             }
@@ -176,29 +179,16 @@ export default function ClientSearchMapScreen() {
                 />
             )}
 
-            <TextInput
-                style={styles.input}
-                placeholder="Ubicación seleccionada..."
-                value={address}
-                editable={false}
-            />
-
             <View style={styles.mapContainer}>
-            <MapView
-    ref={mapRef}
-    style={styles.map}
-    initialRegion={location}
-    onRegionChangeComplete={(region) => {
-        setSelectedPlace(region);
-        fetchAddress(region.latitude, region.longitude);
-    }}
->
-   {/*} {selectedPlace && input.length > 0 && (  
-        <Marker coordinate={selectedPlace} title="Lugar seleccionado" />
-    )}*/}
-</MapView>
-
-
+                <MapView
+                    ref={mapRef}
+                    style={styles.map}
+                    initialRegion={location}
+                    onRegionChangeComplete={(region) => {
+                        setLocation(region);
+                        fetchAddress(region.latitude, region.longitude);
+                    }}
+                />
                 <View style={styles.pinContainer}>
                     <Image source={require('../../../../assets/pin_red.png')} style={styles.pin} />
                 </View>

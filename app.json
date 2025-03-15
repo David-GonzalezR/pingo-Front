@@ -7,6 +7,9 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+    "extra":{
+      "googleMapsApiKey":"AIzaSyBRU1AcblMMEyUQraCnVPo3S8YZ_0u-C6U"
+    },
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
