@@ -17,8 +17,11 @@ const API_KEY = GoogleMapsApiKey;
 export default function ClientSearchMapScreen() {
     const [location, setLocation] = useState<Region | undefined>(undefined);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
-    const [input, setInput] = useState("");  // Ahora también mostrará la dirección seleccionada
+    const [input, setInput] = useState(""); 
     const [suggestions, setSuggestions] = useState<any[]>([]); 
+    const [destinationInput, setDestinationInput] = useState(""); // NUEVO
+    const [destinationSuggestions, setDestinationSuggestions] = useState<any[]>([]); // NUEVO
+    const [destinationLocation, setDestinationLocation] = useState<Region | undefined>(undefined); // NUEVO
     const mapRef = React.useRef<MapView>(null);
 
     useEffect(() => {
@@ -56,7 +59,7 @@ export default function ClientSearchMapScreen() {
 
             if (result.status === "OK" && result.results.length > 0) {
                 const formattedAddress = result.results[0].formatted_address;
-                setInput(`📍 ${formattedAddress}`);  //muestra la dirección seleccionada
+                setInput(`📍 ${formattedAddress}`); 
                 console.log(`📍 Ubicación obtenida: Latitud ${latitude}, Longitud ${longitude}`);
             } else {
                 setInput("📍 Dirección no disponible");
@@ -67,9 +70,9 @@ export default function ClientSearchMapScreen() {
         }
     };
 
-    const fetchAutocompleteSuggestions = async (text: string) => {
+    const fetchAutocompleteSuggestions = async (text: string, isDestination = false) => { // MODIFICADO
         if (text.length < 3) {
-            setSuggestions([]);
+            isDestination ? setDestinationSuggestions([]) : setSuggestions([]);
             return;
         }
 
@@ -97,20 +100,19 @@ export default function ClientSearchMapScreen() {
             });
 
             const result = await response.json();
-            setSuggestions(result.suggestions || []);
+            isDestination ? setDestinationSuggestions(result.suggestions || []) : setSuggestions(result.suggestions || []);
         } catch (error) {
             console.error("⚠️ Error en Autocomplete:", error);
         }
     };
 
-    const fetchPlaceDetails = async (placeId: string) => {
+    const fetchPlaceDetails = async (placeId: string, isDestination = false) => { // MODIFICADO
         try {
             const response = await fetch(`https://places.googleapis.com/v1/places/${placeId}?fields=location&key=${API_KEY}`);
             const result = await response.json();
 
             if (result.location) {
                 const { latitude, longitude } = result.location;
-
                 console.log(`📍 Ubicación seleccionada: Latitud ${latitude}, Longitud ${longitude}`);
 
                 const newRegion = {
@@ -120,10 +122,15 @@ export default function ClientSearchMapScreen() {
                     longitudeDelta: LONGITUDE_DELTA,
                 };
 
-                setLocation(newRegion);
-                setSuggestions([]); 
-                mapRef.current?.animateToRegion(newRegion, 1000); 
-                fetchAddress(latitude, longitude);
+                if (isDestination) {
+                    setDestinationLocation(newRegion);
+                    setDestinationSuggestions([]); 
+                } else {
+                    setLocation(newRegion);
+                    setSuggestions([]); 
+                    mapRef.current?.animateToRegion(newRegion, 1000);
+                    fetchAddress(latitude, longitude);
+                }
             }
         } catch (error) {
             console.error("⚠️ Error obteniendo detalles del lugar:", error);
@@ -146,7 +153,9 @@ export default function ClientSearchMapScreen() {
         );
     }
 
-    return (
+    return (   
+                                          /*  Campo para la dirección de origen */
+        
         <View style={styles.container}>
             <TextInput
                 style={styles.input}
@@ -179,7 +188,39 @@ export default function ClientSearchMapScreen() {
                 />
             )}
 
-            <View style={styles.mapContainer}>
+            {/*  Campo para la dirección de destino */}
+            <TextInput
+                style={styles.input}
+                placeholder="Destino..."
+                value={destinationInput}
+                onChangeText={(text) => {
+                    setDestinationInput(text);
+                    fetchAutocompleteSuggestions(text, true);
+                }}
+            />
+
+            {destinationSuggestions.length > 0 && (
+                <FlatList
+                    data={destinationSuggestions}
+                    keyExtractor={(item) => item.placePrediction.placeId}
+                    keyboardShouldPersistTaps="handled"
+                    renderItem={({ item }) => {
+                        const destinationMainText = item.placePrediction.structuredFormat?.mainText?.text || "Sin nombre";
+                        const destinationSecondaryText = item.placePrediction.structuredFormat?.secondaryText?.text || "Sin ubicación";
+
+                        return (
+                            <TouchableOpacity onPress={() => fetchPlaceDetails(item.placePrediction.placeId)}>
+                                <View style={{ padding: 10, borderBottomWidth: 1, borderColor: "#ccc", backgroundColor: "white" }}>
+                                    <Text style={{ fontSize: 16, fontWeight: "bold" }}>{destinationMainText}</Text>
+                                    <Text style={{ fontSize: 14, color: "gray" }}>{destinationSecondaryText}</Text>
+                                </View>
+                            </TouchableOpacity>
+                        );
+                    }}
+                />
+            )}
+
+<View style={styles.mapContainer}>
                 <MapView
                     ref={mapRef}
                     style={styles.map}
