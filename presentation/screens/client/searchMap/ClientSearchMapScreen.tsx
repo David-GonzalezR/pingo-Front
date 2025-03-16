@@ -106,28 +106,30 @@ export default function ClientSearchMapScreen() {
         }
     };
 
-    const fetchPlaceDetails = async (placeId: string, isDestination = false) => { // MODIFICADO
+    const fetchPlaceDetails = async (placeId: string, isDestination = false, placeName: string) => {
         try {
             const response = await fetch(`https://places.googleapis.com/v1/places/${placeId}?fields=location&key=${API_KEY}`);
             const result = await response.json();
-
+    
             if (result.location) {
                 const { latitude, longitude } = result.location;
                 console.log(`📍 Ubicación seleccionada: Latitud ${latitude}, Longitud ${longitude}`);
-
+    
                 const newRegion = {
                     latitude,
                     longitude,
                     latitudeDelta: 0.0001,
                     longitudeDelta: LONGITUDE_DELTA,
                 };
-
+    
                 if (isDestination) {
                     setDestinationLocation(newRegion);
-                    setDestinationSuggestions([]); 
+                    setDestinationSuggestions([]); // Cerrar lista de sugerencias
+                    setDestinationInput(placeName); // Guardar el nombre en el input de destino
                 } else {
                     setLocation(newRegion);
-                    setSuggestions([]); 
+                    setSuggestions([]); // Cerrar lista de sugerencias
+                    setInput(placeName); // Guardar el nombre en el input de origen
                     mapRef.current?.animateToRegion(newRegion, 1000);
                     fetchAddress(latitude, longitude);
                 }
@@ -136,7 +138,7 @@ export default function ClientSearchMapScreen() {
             console.error("⚠️ Error obteniendo detalles del lugar:", error);
         }
     };
-
+    
     if (errorMsg) {
         return (
             <View style={styles.container}>
@@ -177,8 +179,9 @@ export default function ClientSearchMapScreen() {
                         const secondaryText = item.placePrediction.structuredFormat?.secondaryText?.text || "Sin ubicación";
 
                         return (
-                            <TouchableOpacity onPress={() => fetchPlaceDetails(item.placePrediction.placeId)}>
-                                <View style={{ padding: 10, borderBottomWidth: 1, borderColor: "#ccc", backgroundColor: "white" }}>
+                            <TouchableOpacity
+                            onPress={() => fetchPlaceDetails(item.placePrediction.placeId, false, item.placePrediction.structuredFormat?.mainText?.text)}
+>                                <View style={{ padding: 10, borderBottomWidth: 1, borderColor: "#ccc", backgroundColor: "white" }}>
                                     <Text style={{ fontSize: 16, fontWeight: "bold" }}>{mainText}</Text>
                                     <Text style={{ fontSize: 14, color: "gray" }}>{secondaryText}</Text>
                                 </View>
@@ -209,8 +212,9 @@ export default function ClientSearchMapScreen() {
                         const destinationSecondaryText = item.placePrediction.structuredFormat?.secondaryText?.text || "Sin ubicación";
 
                         return (
-                            <TouchableOpacity onPress={() => fetchPlaceDetails(item.placePrediction.placeId)}>
-                                <View style={{ padding: 10, borderBottomWidth: 1, borderColor: "#ccc", backgroundColor: "white" }}>
+                            <TouchableOpacity
+                            onPress={() => fetchPlaceDetails(item.placePrediction.placeId, true, item.placePrediction.structuredFormat?.mainText?.text)}
+>                                <View style={{ padding: 10, borderBottomWidth: 1, borderColor: "#ccc", backgroundColor: "white" }}>
                                     <Text style={{ fontSize: 16, fontWeight: "bold" }}>{destinationMainText}</Text>
                                     <Text style={{ fontSize: 14, color: "gray" }}>{destinationSecondaryText}</Text>
                                 </View>
