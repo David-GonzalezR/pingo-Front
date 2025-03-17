@@ -4,11 +4,13 @@ import MapView, { Marker, Region } from "react-native-maps";
 import * as Location from 'expo-location';
 import styles from './Styles';
 import { GoogleMapsApiKey } from "../../../../data/sources/remote/api/googleMapsApiKey";
+import debounce from 'lodash/debounce';
 
 const { width, height } = Dimensions.get("window");
 const ASPECT_RATIO = width / height;
 const LATITUDE_DELTA = 0.001;
 const LONGITUDE_DELTA = LATITUDE_DELTA * ASPECT_RATIO;
+
 
 const API_URL = "https://places.googleapis.com/v1/places:autocomplete";
 const REVERSE_GEOCODE_URL = "https://maps.googleapis.com/maps/api/geocode/json";
@@ -25,9 +27,31 @@ export default function ClientSearchMapScreen() {
     const mapRef = React.useRef<MapView>(null);
     const [origin, setOrigin] = useState<{ address: string; lat: string; lng: string } | null>(null);
     const [destination, setDestination] = useState<{ address: string; lat: string; lng: string } | null>(null);
+    const [focusedField, setFocusedField] = useState<"origin" | "destination">("origin");
+    const [adress, setAdress] = useState<"pass" | "restring">("pass");
+    const [pinImage, setPinImage] = useState(require('../../../../assets/person_location.png'));
+    
+
 
     useEffect(() => {
+        if (focusedField === "origin") {
+            setPinImage(require('../../../../assets/person_location.png')); // Imagen roja si es origen
+        } else {
+            setPinImage(require('../../../../assets/alfiler.png')); // Imagen azul si es destino
+        }
+if(origin!== null && destination !== null){
+    console.log("viaje completado")
+    console.log( origin)
+    console.log( destination)
+}
+ 
+
+    }, [focusedField, origin, destination]);
+    
+    useEffect(() => {
         (async () => {
+                  
+
             try {
                 let { status } = await Location.requestForegroundPermissionsAsync();
                 if (status !== 'granted') {
@@ -36,7 +60,6 @@ export default function ClientSearchMapScreen() {
                 }
 
                 let location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Highest });
-                console.log(`📍 Ubicación inicial: Latitud ${location.coords.latitude}, Longitud ${location.coords.longitude}`);
 
                 const region = {
                     latitude: location.coords.latitude,
@@ -45,36 +68,62 @@ export default function ClientSearchMapScreen() {
                     longitudeDelta: LONGITUDE_DELTA,
                 };
 
-                setLocation(region);
-                fetchAddress(region.latitude, region.longitude);
+                setLocation(region);           
+
+           
+                    fetchAddress(region.latitude, region.longitude, focusedField);
+             
+                
+                
+                
             } catch (error) {
                 setErrorMsg('No se pudo obtener la ubicación.');
-                console.error(error);
             }
         })();
-    }, []);
+    }, []); 
 
-    const fetchAddress = async (latitude: number, longitude: number) => {
+
+    const fetchAddress = async (latitude: number, longitude: number, field: "origin" | "destination") => {
+        if(adress==="pass"){
         try {
             const response = await fetch(`${REVERSE_GEOCODE_URL}?latlng=${latitude},${longitude}&key=${API_KEY}`);
             const result = await response.json();
-
+    
             if (result.status === "OK" && result.results.length > 0) {
-                
-                const placeName = result.results[0].name || result.results[0].formatted_address;
-                setInput(`📍 ${placeName}`);
-                setOrigin( { address: `origen-arriba ${placeName}`, lat: latitude.toString(), lng: longitude.toString() });
-                console.log(`origin_arriba`, { address: placeName, lat: latitude, lng: longitude });
-                console.log(`📍 Ubicación origen1: Latitud ${latitude}, Longitud ${longitude}`);
-                setSuggestions([]);
+                let placeName = "Ubicación desconocida"; 
+    
+                // 1️⃣ Buscar un resultado que tenga un "name"
+                const placeWithName = result.results.find((r: any) => r.name);
+                if (placeWithName) {
+                    placeName = placeWithName.name; // Preferir el nombre del lugar
+                } else {
+                    // 2️⃣ Si no hay "name", buscar la "formatted_address"
+                    const placeWithAddress = result.results.find((r: any) => r.formatted_address);
+                    if (placeWithAddress) {
+                        placeName = placeWithAddress.formatted_address;
+                    }
+                }
+    
+                if (field === "origin") {
+                    setInput(`📍 ${placeName}`);
+                    setOrigin({ address: placeName, lat: latitude.toString(), lng: longitude.toString() });
+                } else {
+                    setDestinationInput(`📍 ${placeName}`);
+                    setDestination({ address: placeName, lat: latitude.toString(), lng: longitude.toString() });
+                }
             } else {
-                setInput("📍 Dirección no disponible");
+                if (field === "origin") setInput("📍 Dirección no disponible");
+                else setDestinationInput("📍 Dirección no disponible");
             }
         } catch (error) {
             console.error("⚠️ Error obteniendo dirección:", error);
-            setInput("📍 Error al obtener la dirección");
+            if (field === "origin") setInput("📍 Error al obtener la dirección");
+            else setDestinationInput("📍 Error al obtener la dirección");
         }
+    }
     };
+    
+
 
     const fetchAutocompleteSuggestions = async (text: string, isDestination = false) => { // MODIFICADO
         if (text.length < 3) {
@@ -113,6 +162,8 @@ export default function ClientSearchMapScreen() {
     };
 
     const fetchPlaceDetails = async (placeId: string, isDestination = false, placeName: string) => {
+
+        if (focusedField) {
         try {
             const response = await fetch(`https://places.googleapis.com/v1/places/${placeId}?fields=location&key=${API_KEY}`);
             const result = await response.json();
@@ -136,22 +187,24 @@ export default function ClientSearchMapScreen() {
                 if (isDestination) {
                     setDestinationLocation(newRegion);
                     setDestinationSuggestions([]); // Cerrar lista de sugerencias
-                    setDestinationInput(placeName); // Guardar el nombre en el input de destino
+                    setDestinationInput(placeName);
+                    mapRef.current?.animateToRegion(newRegion, 1000); // Guardar el nombre en el input de destino
                     setDestination({ address: placeName, lat: latitude.toString(), lng: longitude.toString() });
-                    console.log(`destination`, { address: placeName, lat: latitude, lng: longitude });
-
+                    setAdress("restring")
                 } else {
                     setLocation(newRegion);
                     setSuggestions([]); // Cerrar lista de sugerencias
                     setInput(placeName); // Guardar el nombre en el input de origen
-                    mapRef.current?.animateToRegion(newRegion, 1000);                    
+                    mapRef.current?.animateToRegion(newRegion, 1000);
                     setOrigin({ address: placeName, lat: latitude.toString(), lng: longitude.toString() });
-                    console.log(`origin`, { address: placeName, lat: latitude, lng: longitude });                  
+                    setAdress("restring")
                 }
+               
             }
         } catch (error) {
             console.error("⚠️ Error obteniendo detalles del lugar:", error);
         }
+    }
     };
 
     if (errorMsg) {
@@ -178,6 +231,7 @@ export default function ClientSearchMapScreen() {
                 style={styles.input}
                 placeholder="Recoger en..."
                 value={input}
+                onFocus={() => setFocusedField("origin")}
                 onChangeText={(text) => {
                     setInput(text);
                     fetchAutocompleteSuggestions(text);
@@ -195,11 +249,11 @@ export default function ClientSearchMapScreen() {
 
                         return (
                             <TouchableOpacity
-                                onPress={() => fetchPlaceDetails(
+                                onPress={debounce(() => fetchPlaceDetails(
                                     item.placePrediction.placeId,
                                     false,
-                                    item.placePrediction.structuredFormat?.mainText?.text || "Ubicación desconocida"
-                                )}
+                                    mainText  || "Ubicación desconocida"
+                                ), 200)}
                             >
                                 <View style={{ padding: 10, borderBottomWidth: 1, borderColor: "#ccc", backgroundColor: "white" }}>
                                     <Text style={{ fontSize: 16, fontWeight: "bold" }}>
@@ -220,6 +274,7 @@ export default function ClientSearchMapScreen() {
                 style={styles.input}
                 placeholder="Destino..."
                 value={destinationInput}
+                onFocus={() => setFocusedField("destination")}
                 onChangeText={(text) => {
                     setDestinationInput(text);
                     fetchAutocompleteSuggestions(text, true);
@@ -237,11 +292,11 @@ export default function ClientSearchMapScreen() {
 
                         return (
                             <TouchableOpacity
-                                onPress={() => fetchPlaceDetails(
+                                onPress={debounce(() => fetchPlaceDetails(
                                     item.placePrediction.placeId,
                                     true,
-                                    item.placePrediction.structuredFormat?.mainText?.text || "Ubicación desconocida"
-                                )}
+                                    destinationMainText  || "Ubicación desconocida"
+                                ), 200)}
                             >
                                 <View style={{ padding: 10, borderBottomWidth: 1, borderColor: "#ccc", backgroundColor: "white" }}>
                                     <Text style={{ fontSize: 16, fontWeight: "bold" }}>
@@ -263,12 +318,16 @@ export default function ClientSearchMapScreen() {
                     style={styles.map}
                     initialRegion={location}
                     onRegionChangeComplete={(region) => {
-                        setLocation(region);
-                        fetchAddress(region.latitude, region.longitude);
+                        setLocation(region);   
+                        fetchAddress(region.latitude, region.longitude, focusedField);
+                        setAdress("pass")
+                        
+                    
                     }}
                 />
                 <View style={styles.pinContainer}>
-                    <Image source={require('../../../../assets/pin_red.png')} style={styles.pin} />
+                <Image source={pinImage} style={styles.pin} />
+
                 </View>
             </View>
         </View>
