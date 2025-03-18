@@ -39,4 +39,19 @@ export default StyleSheet.create({
         height: 50,
         resizeMode: "contain",
     },
+    circleMarker: {
+        width: 15,
+        height: 15,
+        backgroundColor: "green",
+        borderRadius: 10, // Hace que sea un círculo
+        borderWidth: 2,
+        borderColor: "white",
+    },
+    squareMarker: {
+        width: 15,
+        height: 15,
+        backgroundColor: "red",
+        borderWidth: 2,
+        borderColor: "white",
+    },
 });

@@ -10,7 +10,7 @@ const polyline = require("@mapbox/polyline");
 
 const { width, height } = Dimensions.get("window");
 const ASPECT_RATIO = width / height;
-const LATITUDE_DELTA = 0.001;
+const LATITUDE_DELTA = 0.002;
 const LONGITUDE_DELTA = LATITUDE_DELTA * ASPECT_RATIO;
 
 
@@ -41,19 +41,20 @@ export default function ClientSearchMapScreen() {
         } else {
             setPinImage(require('../../../../assets/alfiler.png')); // Imagen azul si es destino
         }
-if(origin!== null && destination !== null){
-    console.log("viaje completado")
-    console.log( origin)
-    console.log( destination)
-    fetchRoute();
-}
- 
+        if (origin !== null && destination !== null) {
+            console.log("viaje completado")
+            console.log(origin)
+            console.log(destination)
+            fetchRoute();
+            setAdress("restring")
+        }
+
 
     }, [focusedField, origin, destination]);
-    
+
     useEffect(() => {
         (async () => {
-                  
+
 
             try {
                 let { status } = await Location.requestForegroundPermissionsAsync();
@@ -71,61 +72,61 @@ if(origin!== null && destination !== null){
                     longitudeDelta: LONGITUDE_DELTA,
                 };
 
-                setLocation(region);           
+                setLocation(region);
 
-           
-                    fetchAddress(region.latitude, region.longitude, focusedField);
-             
-                
-                
-                
+
+                fetchAddress(region.latitude, region.longitude, focusedField);
+
+
+
+
             } catch (error) {
                 setErrorMsg('No se pudo obtener la ubicación.');
             }
         })();
-    }, []); 
+    }, []);
 
 
     const fetchAddress = async (latitude: number, longitude: number, field: "origin" | "destination") => {
-        if(adress==="pass"){
-        try {
-            const response = await fetch(`${REVERSE_GEOCODE_URL}?latlng=${latitude},${longitude}&key=${API_KEY}`);
-            const result = await response.json();
-    
-            if (result.status === "OK" && result.results.length > 0) {
-                let placeName = "Ubicación desconocida"; 
-    
-                // 1️⃣ Buscar un resultado que tenga un "name"
-                const placeWithName = result.results.find((r: any) => r.name);
-                if (placeWithName) {
-                    placeName = placeWithName.name; // Preferir el nombre del lugar
-                } else {
-                    // 2️⃣ Si no hay "name", buscar la "formatted_address"
-                    const placeWithAddress = result.results.find((r: any) => r.formatted_address);
-                    if (placeWithAddress) {
-                        placeName = placeWithAddress.formatted_address;
+        if (adress === "pass") {
+            try {
+                const response = await fetch(`${REVERSE_GEOCODE_URL}?latlng=${latitude},${longitude}&key=${API_KEY}`);
+                const result = await response.json();
+
+                if (result.status === "OK" && result.results.length > 0) {
+                    let placeName = "Ubicación desconocida";
+
+                    // 1️⃣ Buscar un resultado que tenga un "name"
+                    const placeWithName = result.results.find((r: any) => r.name);
+                    if (placeWithName) {
+                        placeName = placeWithName.name; // Preferir el nombre del lugar
+                    } else {
+                        // 2️⃣ Si no hay "name", buscar la "formatted_address"
+                        const placeWithAddress = result.results.find((r: any) => r.formatted_address);
+                        if (placeWithAddress) {
+                            placeName = placeWithAddress.formatted_address;
+                        }
                     }
-                }
-    
-                if (field === "origin") {
-                    setInput(`📍 ${placeName}`);
-                    setOrigin({ address: placeName, lat: latitude.toString(), lng: longitude.toString() });
+
+                    if (field === "origin") {
+                        setInput(`📍 ${placeName}`);
+                        setOrigin({ address: placeName, lat: latitude.toString(), lng: longitude.toString() });
+                    } else {
+                        setDestinationInput(`📍 ${placeName}`);
+                        setDestination({ address: placeName, lat: latitude.toString(), lng: longitude.toString() });
+                    }
                 } else {
-                    setDestinationInput(`📍 ${placeName}`);
-                    setDestination({ address: placeName, lat: latitude.toString(), lng: longitude.toString() });
+                    if (field === "origin") setInput("📍 Dirección no disponible");
+                    else setDestinationInput("📍 Dirección no disponible");
                 }
-            } else {
-                if (field === "origin") setInput("📍 Dirección no disponible");
-                else setDestinationInput("📍 Dirección no disponible");
+            } catch (error) {
+                console.error("⚠️ Error obteniendo dirección:", error);
+                if (field === "origin") setInput("📍 Error al obtener la dirección");
+                else setDestinationInput("📍 Error al obtener la dirección");
             }
-        } catch (error) {
-            console.error("⚠️ Error obteniendo dirección:", error);
-            if (field === "origin") setInput("📍 Error al obtener la dirección");
-            else setDestinationInput("📍 Error al obtener la dirección");
         }
-    }
     };
-    
+
 
 
     const fetchAutocompleteSuggestions = async (text: string, isDestination = false) => { // MODIFICADO
@@ -167,47 +168,47 @@ if(origin!== null && destination !== null){
     const fetchPlaceDetails = async (placeId: string, isDestination = false, placeName: string) => {
 
         if (focusedField) {
-        try {
-            const response = await fetch(`https://places.googleapis.com/v1/places/${placeId}?fields=location&key=${API_KEY}`);
-            const result = await response.json();
+            try {
+                const response = await fetch(`https://places.googleapis.com/v1/places/${placeId}?fields=location&key=${API_KEY}`);
+                const result = await response.json();
 
-            if (result.location) {
-                const { latitude, longitude } = result.location;
+                if (result.location) {
+                    const { latitude, longitude } = result.location;
 
 
-                const newRegion = {
-                    latitude,
-                    longitude,
-                    latitudeDelta: 0.0001,
-                    longitudeDelta: LONGITUDE_DELTA,
-                };
-                const locationData = {
-                    address: placeName,
-                    lat: latitude.toString(),
-                    lng: longitude.toString(),
-                };
+                    const newRegion = {
+                        latitude,
+                        longitude,
+                        latitudeDelta: LATITUDE_DELTA,
+                        longitudeDelta: LONGITUDE_DELTA,
+                    };
+                    const locationData = {
+                        address: placeName,
+                        lat: latitude.toString(),
+                        lng: longitude.toString(),
+                    };
 
-                if (isDestination) {
-                    setDestinationLocation(newRegion);
-                    setDestinationSuggestions([]); // Cerrar lista de sugerencias
-                    setDestinationInput(placeName);
-                    mapRef.current?.animateToRegion(newRegion, 1000); // Guardar el nombre en el input de destino
-                    setDestination({ address: placeName, lat: latitude.toString(), lng: longitude.toString() });
-                    setAdress("restring")
-                } else {
-                    setLocation(newRegion);
-                    setSuggestions([]); // Cerrar lista de sugerencias
-                    setInput(placeName); // Guardar el nombre en el input de origen
-                    mapRef.current?.animateToRegion(newRegion, 1000);
-                    setOrigin({ address: placeName, lat: latitude.toString(), lng: longitude.toString() });
-                    setAdress("restring")
+                    if (isDestination) {
+                        setDestinationLocation(newRegion);
+                        setDestinationSuggestions([]); // Cerrar lista de sugerencias
+                        setDestinationInput(placeName);
+                        mapRef.current?.animateToRegion(newRegion, 1000); // Guardar el nombre en el input de destino
+                        setDestination({ address: placeName, lat: latitude.toString(), lng: longitude.toString() });
+                        setAdress("restring")
+                    } else {
+                        setLocation(newRegion);
+                        setSuggestions([]); // Cerrar lista de sugerencias
+                        setInput(placeName); // Guardar el nombre en el input de origen
+                        mapRef.current?.animateToRegion(newRegion, 1000);
+                        setOrigin({ address: placeName, lat: latitude.toString(), lng: longitude.toString() });
+                        setAdress("restring")
+                    }
+
                 }
-               
+            } catch (error) {
+                console.error("⚠️ Error obteniendo detalles del lugar:", error);
             }
-        } catch (error) {
-            console.error("⚠️ Error obteniendo detalles del lugar:", error);
         }
-    }
     };
 
     if (errorMsg) {
@@ -216,7 +217,7 @@ if(origin!== null && destination !== null){
                 <Text>{errorMsg}</Text>
             </View>
         );
-    };
+    }
 
 
     //implementacion dibujar ruta
@@ -225,7 +226,7 @@ if(origin!== null && destination !== null){
             console.log("⚠️ Debes seleccionar un origen y un destino.");
             return;
         }
-    
+
         try {
             const response = await fetch("https://routes.googleapis.com/directions/v2:computeRoutes", {
                 method: "POST",
@@ -254,20 +255,40 @@ if(origin!== null && destination !== null){
                     travelMode: "DRIVE"
                 })
             });
-    
+
             const result = await response.json();
             console.log("Ruta calculada:", result);
-    
+
             if (result.routes && result.routes.length > 0) {
                 const route = result.routes[0];
-    
+
                 console.log("Duración:", route.duration);
                 console.log("Distancia:", route.distanceMeters, "metros");
-    
+
                 // Decodificar la polyline y almacenarla en el estado
                 const decodedPolyline = polyline.decode(route.polyline.encodedPolyline);
                 setRouteData({ polyline: decodedPolyline, distance: route.distanceMeters, duration: route.duration });
-    
+
+                if (mapRef.current && decodedPolyline.length > 0) {
+                    mapRef.current.fitToCoordinates(decodedPolyline, {
+                        edgePadding: { top: 50, right: 50, bottom: 50, left: 50 }, // Espacio alrededor de la ruta
+                        animated: true, // Suaviza la animación
+                    });
+                }
+
+
+                <Polyline
+                    coordinates={decodedPolyline}
+                    strokeColor="blue" // Cambia el color a uno más visible
+                    strokeWidth={6} // Aumenta el grosor de la línea
+                />
+
+                mapRef.current?.fitToCoordinates(decodedPolyline, {
+                    edgePadding: { top: 100, right: 100, bottom: 100, left: 100 },
+                    animated: true,
+                });
+
+
             } else {
                 console.log("⚠️ No se pudo calcular la ruta.");
             }
@@ -275,9 +296,9 @@ if(origin!== null && destination !== null){
             console.error("⚠️ Error obteniendo la ruta:", error);
         }
     };
-    
 
-    
+
+
 
     if (!location) {
         return (
@@ -316,7 +337,7 @@ if(origin!== null && destination !== null){
                                 onPress={debounce(() => fetchPlaceDetails(
                                     item.placePrediction.placeId,
                                     false,
-                                    mainText  || "Ubicación desconocida"
+                                    mainText || "Ubicación desconocida"
                                 ), 200)}
                             >
                                 <View style={{ padding: 10, borderBottomWidth: 1, borderColor: "#ccc", backgroundColor: "white" }}>
@@ -359,7 +380,7 @@ if(origin!== null && destination !== null){
                                 onPress={debounce(() => fetchPlaceDetails(
                                     item.placePrediction.placeId,
                                     true,
-                                    destinationMainText  || "Ubicación desconocida"
+                                    destinationMainText || "Ubicación desconocida"
                                 ), 200)}
                             >
                                 <View style={{ padding: 10, borderBottomWidth: 1, borderColor: "#ccc", backgroundColor: "white" }}>
@@ -376,31 +397,46 @@ if(origin!== null && destination !== null){
                 />
             )}
 
-<View style={styles.mapContainer}>
-    <MapView
-        ref={mapRef}
-        style={styles.map}
-        initialRegion={location}
-        onRegionChangeComplete={(region) => {
-            setLocation(region);
-            fetchAddress(region.latitude, region.longitude, focusedField);
-            setAdress("pass");
-        }}
-    >
-        {/* Dibujar la ruta en el mapa */}
-        {routeData && (
-            <Polyline
-                coordinates={routeData.polyline.map(([latitude, longitude]) => ({ latitude, longitude }))}
-                strokeWidth={4}
-                strokeColor="blue"
-            />
-        )}
-    </MapView>
+            <View style={styles.mapContainer}>
+                <MapView
+                    ref={mapRef}
+                    style={styles.map}
+                    initialRegion={location}
+                    onRegionChangeComplete={(region) => {
+                        setLocation(region);
+                        fetchAddress(region.latitude, region.longitude, focusedField);
+                        setAdress("pass");
+                    }}
+                >
+                    {origin && (
+                        <Marker coordinate={{ latitude: parseFloat(origin.lat), longitude: parseFloat(origin.lng) }} title="Origen">
+                            <View style={styles.circleMarker} />
+                        </Marker>
+                    )}
 
-    <View style={styles.pinContainer}>
-        <Image source={pinImage} style={styles.pin} />
-    </View>
-</View>
+                    
+                    {destination && (
+                        <Marker coordinate={{ latitude: parseFloat(destination.lat), longitude: parseFloat(destination.lng) }} title="Destino">
+                            <View style={styles.squareMarker} />
+                        </Marker>
+                    )}
+                    {/* Dibujar la ruta en el mapa */}
+                    {routeData && (
 
-    
-</View>)}
+                        <Polyline
+                            coordinates={routeData.polyline.map(([latitude, longitude]) => ({ latitude, longitude }))}
+                            strokeWidth={5}
+                            strokeColor="blue"
+                        />
+
+                    )}
+                </MapView>
+
+                <View style={styles.pinContainer}>
+                    <Image source={pinImage} style={styles.pin} />
+                </View>
+            </View>
+
+
+        </View>)
+}
