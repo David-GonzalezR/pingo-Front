@@ -5,6 +5,8 @@ import * as Location from 'expo-location';
 import styles from './Styles';
 import { GoogleMapsApiKey } from "../../../../data/sources/remote/api/googleMapsApiKey";
 import debounce from 'lodash/debounce';
+import { Polyline } from "react-native-maps";
+const polyline = require("@mapbox/polyline");
 
 const { width, height } = Dimensions.get("window");
 const ASPECT_RATIO = width / height;
@@ -30,7 +32,7 @@ export default function ClientSearchMapScreen() {
     const [focusedField, setFocusedField] = useState<"origin" | "destination">("origin");
     const [adress, setAdress] = useState<"pass" | "restring">("pass");
     const [pinImage, setPinImage] = useState(require('../../../../assets/person_location.png'));
-    
+    const [routeData, setRouteData] = useState<{ polyline: number[][], distance: number, duration: string } | null>(null);
 
 
     useEffect(() => {
@@ -43,6 +45,7 @@ if(origin!== null && destination !== null){
     console.log("viaje completado")
     console.log( origin)
     console.log( destination)
+    fetchRoute();
 }
  
 
@@ -213,7 +216,68 @@ if(origin!== null && destination !== null){
                 <Text>{errorMsg}</Text>
             </View>
         );
-    }
+    };
+
+
+    //implementacion dibujar ruta
+    const fetchRoute = async () => {
+        if (!origin || !destination) {
+            console.log("⚠️ Debes seleccionar un origen y un destino.");
+            return;
+        }
+    
+        try {
+            const response = await fetch("https://routes.googleapis.com/directions/v2:computeRoutes", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-Goog-Api-Key": API_KEY,
+                    "X-Goog-FieldMask": "routes.duration,routes.distanceMeters,routes.polyline",
+                },
+                body: JSON.stringify({
+                    origin: {
+                        location: {
+                            latLng: {
+                                latitude: parseFloat(origin.lat), // Se usa la variable origin
+                                longitude: parseFloat(origin.lng)
+                            }
+                        }
+                    },
+                    destination: {
+                        location: {
+                            latLng: {
+                                latitude: parseFloat(destination.lat), // Se usa la variable destination
+                                longitude: parseFloat(destination.lng)
+                            }
+                        }
+                    },
+                    travelMode: "DRIVE"
+                })
+            });
+    
+            const result = await response.json();
+            console.log("Ruta calculada:", result);
+    
+            if (result.routes && result.routes.length > 0) {
+                const route = result.routes[0];
+    
+                console.log("Duración:", route.duration);
+                console.log("Distancia:", route.distanceMeters, "metros");
+    
+                // Decodificar la polyline y almacenarla en el estado
+                const decodedPolyline = polyline.decode(route.polyline.encodedPolyline);
+                setRouteData({ polyline: decodedPolyline, distance: route.distanceMeters, duration: route.duration });
+    
+            } else {
+                console.log("⚠️ No se pudo calcular la ruta.");
+            }
+        } catch (error) {
+            console.error("⚠️ Error obteniendo la ruta:", error);
+        }
+    };
+    
+
+    
 
     if (!location) {
         return (
@@ -312,24 +376,31 @@ if(origin!== null && destination !== null){
                 />
             )}
 
-            <View style={styles.mapContainer}>
-                <MapView
-                    ref={mapRef}
-                    style={styles.map}
-                    initialRegion={location}
-                    onRegionChangeComplete={(region) => {
-                        setLocation(region);   
-                        fetchAddress(region.latitude, region.longitude, focusedField);
-                        setAdress("pass")
-                        
-                    
-                    }}
-                />
-                <View style={styles.pinContainer}>
-                <Image source={pinImage} style={styles.pin} />
+<View style={styles.mapContainer}>
+    <MapView
+        ref={mapRef}
+        style={styles.map}
+        initialRegion={location}
+        onRegionChangeComplete={(region) => {
+            setLocation(region);
+            fetchAddress(region.latitude, region.longitude, focusedField);
+            setAdress("pass");
+        }}
+    >
+        {/* Dibujar la ruta en el mapa */}
+        {routeData && (
+            <Polyline
+                coordinates={routeData.polyline.map(([latitude, longitude]) => ({ latitude, longitude }))}
+                strokeWidth={4}
+                strokeColor="blue"
+            />
+        )}
+    </MapView>
 
-                </View>
-            </View>
-        </View>
-    );
-}
+    <View style={styles.pinContainer}>
+        <Image source={pinImage} style={styles.pin} />
+    </View>
+</View>
+
+    
+</View>)}
