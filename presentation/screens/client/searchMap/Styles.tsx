@@ -122,11 +122,20 @@ export const styles = StyleSheet.create({
     resizeMode: "contain",
   },
   
-  circleMarker: {
-
+  circleMarker: {    
+      width: 15,
+      height: 15,
+      borderRadius: 10, // Hace que sea un círculo
+      backgroundColor: 'green', // Color del marcador de origen
+      borderWidth: 2,
+      borderColor: 'white',
   },
   squareMarker: {
-
+    width: 15,
+    height: 15,
+    backgroundColor: 'red', // Color del marcador de destino
+    borderWidth: 2,
+    borderColor: 'white',
   }
 
 });

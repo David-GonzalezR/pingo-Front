@@ -14,8 +14,8 @@ const polyline = require("@mapbox/polyline");
 const { width, height } = Dimensions.get("window");
 const ASPECT_RATIO = width / height;
 const LATITUDE_DELTA = 0.002;
-const LONGITUDE_DELTA = LATITUDE_DELTA * ASPECT_RATIO; 
-  
+const LONGITUDE_DELTA = LATITUDE_DELTA * ASPECT_RATIO;
+
 
 const API_URL = "https://places.googleapis.com/v1/places:autocomplete";
 const REVERSE_GEOCODE_URL = "https://maps.googleapis.com/maps/api/geocode/json";
@@ -38,7 +38,20 @@ export default function ClientSearchMapScreen() {
     const [pinImage, setPinImage] = useState(require('../../../../assets/person_location.png'));
     const [routeData, setRouteData] = useState<{ polyline: number[][], distance: number, duration: string } | null>(null);
 
-
+    useEffect(() => {
+        if (routeData && routeData.polyline.length > 1) {
+          mapRef.current?.fitToCoordinates(
+            routeData.polyline.map(point => ({
+              latitude: point[0],
+              longitude: point[1],
+            })),
+            {
+              edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
+              animated: true,
+            }
+          );
+        }
+      }, [routeData]);
     useEffect(() => {
 
 
@@ -353,7 +366,7 @@ export default function ClientSearchMapScreen() {
             {/* Mapa en la parte superior */}
             <View style={styles.mapContainer}>
                 <MapView
-               
+
                     ref={mapRef}
                     style={styles.map}
                     initialRegion={location}
@@ -363,29 +376,43 @@ export default function ClientSearchMapScreen() {
                         setAdress("pass");
                     }}
                 >
-                    {origin && (
-                        <Marker
-                            coordinate={{ latitude: parseFloat(origin.lat), longitude: parseFloat(origin.lng) }}
-                            title="Origen"
-                        >
-                            <View style={styles.circleMarker} />
-                        </Marker>
-                    )}
-                    {destination && (
-                        <Marker
-                            coordinate={{ latitude: parseFloat(destination.lat), longitude: parseFloat(destination.lng) }}
-                            title="Destino"
-                        >
-                            <View style={styles.squareMarker} />
-                        </Marker>
-                    )}
-                    {routeData && (
-                        <Polyline
-                            coordinates={routeData.polyline.map(([latitude, longitude]) => ({ latitude, longitude }))}
-                            strokeWidth={5}
-                            strokeColor="blue"
-                        />
-                    )}
+   {/* Dibujar la línea de la ruta */}
+   {routeData && routeData.polyline.length > 1 && (
+  <>
+    {/* Línea de la ruta */}
+    <Polyline
+      coordinates={routeData.polyline.map((point) => ({
+        latitude: point[0],  
+        longitude: point[1],
+      }))}
+      strokeWidth={5}
+      strokeColor="blue"
+    />
+
+    {/* Marcador de inicio */}
+    <Marker
+      coordinate={{
+        latitude: routeData.polyline[0][0],  
+        longitude: routeData.polyline[0][1],  
+      }}
+      title="Inicio"
+    >
+      <Image source={require('../../../../assets/pin_map.png')} style={{ width: 40, height: 40 }} />
+    </Marker>
+
+    {/* Marcador de destino */}
+    <Marker
+      coordinate={{
+        latitude: routeData.polyline[routeData.polyline.length - 1][0],  
+        longitude: routeData.polyline[routeData.polyline.length - 1][1],  
+      }}
+      title="Destino"
+    >
+      <Image source={require('../../../../assets/pin_map.png')} style={{ width: 40, height: 40 }} />
+    </Marker>
+  </>
+)}
+
                 </MapView>
                 <View style={styles.pinContainer}>
                     <Image source={pinImage} style={styles.pin} />
@@ -394,141 +421,141 @@ export default function ClientSearchMapScreen() {
 
             {/* Contenedor de elementos en la parte inferior */}
             <LinearGradient
-  colors={['#000000', '#333333', '#666666', '#000000']}
-  start={{ x: 0, y: 0 }}
-  end={{ x: 1, y: 1 }}
-  style={{width:"100%", borderTopLeftRadius: 20, borderTopRightRadius: 20 }}
-  >
-            <View style={styles.controlsContainer}>
-                {/* Campo para la dirección de origen */}
+                colors={['#000000', '#333333', '#666666', '#000000']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{ width: "100%", borderTopLeftRadius: 20, borderTopRightRadius: 20 }}
+            >
+                <View style={styles.controlsContainer}>
+                    {/* Campo para la dirección de origen */}
 
 
-                <View style={styles.containersuggestion}>
+                    <View style={styles.containersuggestion}>
 
-                    <View style={[styles.rutaContainer, ocultarData=== "ok" && {display:"none"}]}>
-                        <Image source={require('../../../../assets/image-ruta.png')} style={styles.imgRuta} />
-                    </View>
-                    <View style={styles.containersuggestion_inputs}>
-                        <TextInput
-                            style={[styles.input_O ]}
-                            placeholder="Recoger en..."
-                             placeholderTextColor="#FFFFFF"
-                            value={input}
-                            onFocus={() => setFocusedField("origin")}
-                            onChangeText={(text) => {
-                                setInput(text);
+                        <View style={[styles.rutaContainer, ocultarData === "ok" && { display: "none" }]}>
+                            <Image source={require('../../../../assets/image-ruta.png')} style={styles.imgRuta} />
+                        </View>
+                        <View style={styles.containersuggestion_inputs}>
+                            <TextInput
+                                style={[styles.input_O]}
+                                placeholder="Recoger en..."
+                                placeholderTextColor="#FFFFFF"
+                                value={input}
+                                onFocus={() => setFocusedField("origin")}
+                                onChangeText={(text) => {
+                                    setInput(text);
 
-                                fetchAutocompleteSuggestions(text);
-                                setFocusedField("origin")
-                            }}
-                        />
-                        {suggestions.length > 0 && (
-                            <FlatList
-                                data={suggestions}
-                                keyExtractor={(item) => item.placePrediction.placeId}
-                                keyboardShouldPersistTaps="handled"
-                                renderItem={({ item }) => {
-                                    const mainText = item.placePrediction.structuredFormat?.mainText?.text || "Sin nombre";
-                                    const secondaryText = item.placePrediction.structuredFormat?.secondaryText?.text || "Sin ubicación";
-
-                                    return (
-                                        <TouchableOpacity
-                                            onPress={debounce(() => {
-                                                Keyboard.dismiss(); // Oculta el teclado
-                                                setOcultarData("none");
-                                                fetchPlaceDetails(
-                                                    item.placePrediction.placeId,
-                                                    false,
-                                                    mainText || "Ubicación desconocida"
-                                                );
-                                            }, 200)}
-                                        >
-                                            <View style={styles.suggestionItem}>
-                                                <Text style={styles.suggestionTextBold}>{mainText}</Text>
-                                                <Text style={styles.suggestionText}>{secondaryText}</Text>
-                                            </View>
-                                        </TouchableOpacity>
-                                    );
+                                    fetchAutocompleteSuggestions(text);
+                                    setFocusedField("origin")
                                 }}
                             />
-                        )}
+                            {suggestions.length > 0 && (
+                                <FlatList
+                                    data={suggestions}
+                                    keyExtractor={(item) => item.placePrediction.placeId}
+                                    keyboardShouldPersistTaps="handled"
+                                    renderItem={({ item }) => {
+                                        const mainText = item.placePrediction.structuredFormat?.mainText?.text || "Sin nombre";
+                                        const secondaryText = item.placePrediction.structuredFormat?.secondaryText?.text || "Sin ubicación";
 
-                        {/* Campo para la dirección de destino */}
-                        <TextInput
-                            style={styles.input_D}
-                            placeholder="Destino..."
-                            placeholderTextColor="#FFFFFF"
-                            value={destinationInput}
+                                        return (
+                                            <TouchableOpacity
+                                                onPress={debounce(() => {
+                                                    Keyboard.dismiss(); // Oculta el teclado
+                                                    setOcultarData("none");
+                                                    fetchPlaceDetails(
+                                                        item.placePrediction.placeId,
+                                                        false,
+                                                        mainText || "Ubicación desconocida"
+                                                    );
+                                                }, 200)}
+                                            >
+                                                <View style={styles.suggestionItem}>
+                                                    <Text style={styles.suggestionTextBold}>{mainText}</Text>
+                                                    <Text style={styles.suggestionText}>{secondaryText}</Text>
+                                                </View>
+                                            </TouchableOpacity>
+                                        );
+                                    }}
+                                />
+                            )}
 
-                            onChangeText={(text) => {
-                                setDestinationInput(text);
-                                fetchAutocompleteSuggestions(text, true);
-                                setFocusedField("destination")
-                            }}
-                        />
-                        {destinationSuggestions.length > 0 && (
-                            <FlatList
-                                data={destinationSuggestions}
-                                keyExtractor={(item) => item.placePrediction.placeId}
-                                keyboardShouldPersistTaps="handled"
-                                renderItem={({ item }) => {
-                                    const destinationMainText = item.placePrediction.structuredFormat?.mainText?.text || "Sin nombre";
-                                    const destinationSecondaryText = item.placePrediction.structuredFormat?.secondaryText?.text || "Sin ubicación";
+                            {/* Campo para la dirección de destino */}
+                            <TextInput
+                                style={styles.input_D}
+                                placeholder="Destino..."
+                                placeholderTextColor="#FFFFFF"
+                                value={destinationInput}
 
-                                    return (
-                                        <TouchableOpacity
-                                            onPress={debounce(() => {
-                                                Keyboard.dismiss();   //oculta tecaldo
-                                                setOcultarData("none");
-                                                fetchPlaceDetails(
-                                                    item.placePrediction.placeId,
-                                                    true,
-                                                    destinationMainText || "Ubicación desconocida"
-                                                )
-                                            }, 200)}
-                                        >
-                                            <View style={styles.suggestionItem}>
-                                                <Text style={styles.suggestionTextBold}>{destinationMainText}</Text>
-                                                <Text style={styles.suggestionText}>{destinationSecondaryText}</Text>
-                                            </View>
-                                        </TouchableOpacity>
-                                    );
+                                onChangeText={(text) => {
+                                    setDestinationInput(text);
+                                    fetchAutocompleteSuggestions(text, true);
+                                    setFocusedField("destination")
                                 }}
                             />
-                        )}
+                            {destinationSuggestions.length > 0 && (
+                                <FlatList
+                                    data={destinationSuggestions}
+                                    keyExtractor={(item) => item.placePrediction.placeId}
+                                    keyboardShouldPersistTaps="handled"
+                                    renderItem={({ item }) => {
+                                        const destinationMainText = item.placePrediction.structuredFormat?.mainText?.text || "Sin nombre";
+                                        const destinationSecondaryText = item.placePrediction.structuredFormat?.secondaryText?.text || "Sin ubicación";
+
+                                        return (
+                                            <TouchableOpacity
+                                                onPress={debounce(() => {
+                                                    Keyboard.dismiss();   //oculta tecaldo
+                                                    setOcultarData("none");
+                                                    fetchPlaceDetails(
+                                                        item.placePrediction.placeId,
+                                                        true,
+                                                        destinationMainText || "Ubicación desconocida"
+                                                    )
+                                                }, 200)}
+                                            >
+                                                <View style={styles.suggestionItem}>
+                                                    <Text style={styles.suggestionTextBold}>{destinationMainText}</Text>
+                                                    <Text style={styles.suggestionText}>{destinationSecondaryText}</Text>
+                                                </View>
+                                            </TouchableOpacity>
+                                        );
+                                    }}
+                                />
+                            )}
+                        </View>
                     </View>
+
+
+
+                    <View style={[styles.containerTargetas, ocultarData === "ok" && { display: "none" }]}>
+                        {/* Tarjeta de duración */}
+                        <View style={styles.card}>
+                            <Image source={require('../../../../assets/duracion.png')} style={styles.Img_card} />
+                            <Text style={styles.label}>Duración</Text>
+                            <Text style={styles.value}>
+                                {routeData?.duration ? (Number(routeData.duration.slice(0, -1)) / 60).toFixed(1) : "0"} min
+                            </Text>
+                        </View>
+
+                        {/* Tarjeta de distancia */}
+                        <View style={styles.card}>
+                            <Text style={styles.icon}>📏</Text>
+                            <Text style={styles.label}>Distancia</Text>
+                            <Text style={styles.value}>{routeData?.distance ?? "0 km"}</Text>
+                        </View>
+
+                        {/* Tarjeta de precio */}
+                        <View style={styles.card}>
+                            <Image source={require('../../../../assets/pesos.png')} style={styles.Img_card} />
+                            <Text style={styles.label}>Tarifa</Text>
+                            <Text style={styles.price}>
+                                {calcularPrecio(routeData?.distance ?? 0, routeData?.duration ?? "0s")}
+                            </Text>
+                        </View>
+                    </View>
+                    <DefaultRoundedButton text="Buscar conductor" onPress={fetchRoute} />
                 </View>
-
-
-
-                <View style={[styles.containerTargetas, ocultarData === "ok" && { display: "none" }]}>
-                    {/* Tarjeta de duración */}
-                    <View style={styles.card}>
-                    <Image source={require('../../../../assets/duracion.png')} style={styles.Img_card} />
-                        <Text style={styles.label}>Duración</Text>
-                        <Text style={styles.value}>
-                            {routeData?.duration ? (Number(routeData.duration.slice(0, -1)) / 60).toFixed(1) : "0"} min
-                        </Text>
-                    </View>
-
-                    {/* Tarjeta de distancia */}
-                    <View style={styles.card}>
-                        <Text style={styles.icon}>📏</Text>
-                        <Text style={styles.label}>Distancia</Text>
-                        <Text style={styles.value}>{routeData?.distance ?? "0 km"}</Text>
-                    </View>
-
-                    {/* Tarjeta de precio */}
-                    <View style={styles.card}>
-                    <Image source={require('../../../../assets/pesos.png')} style={styles.Img_card} />
-                        <Text style={styles.label}>Tarifa</Text>
-                        <Text style={styles.price}>
-                            {calcularPrecio(routeData?.distance ?? 0, routeData?.duration ?? "0s")}
-                        </Text>
-                    </View>
-                </View>
-                <DefaultRoundedButton text="Buscar conductor" onPress={fetchRoute} />
-            </View>
             </LinearGradient>
         </View>
     );
