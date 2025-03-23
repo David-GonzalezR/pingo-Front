@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { Text, View, TextInput, FlatList, TouchableOpacity, Image, Dimensions } from "react-native";
+import { Text, View, TextInput, FlatList, TouchableOpacity, Image, Dimensions, Keyboard } from "react-native";
 import MapView, { Marker, Region } from "react-native-maps";
 import * as Location from 'expo-location';
-import styles from './Styles';
+import { styles } from './Styles';
 import { GoogleMapsApiKey } from "../../../../data/sources/remote/api/googleMapsApiKey";
 import debounce from 'lodash/debounce';
 import { Polyline } from "react-native-maps";
@@ -14,8 +14,8 @@ const polyline = require("@mapbox/polyline");
 const { width, height } = Dimensions.get("window");
 const ASPECT_RATIO = width / height;
 const LATITUDE_DELTA = 0.002;
-const LONGITUDE_DELTA = LATITUDE_DELTA * ASPECT_RATIO;
-
+const LONGITUDE_DELTA = LATITUDE_DELTA * ASPECT_RATIO; 
+  
 
 const API_URL = "https://places.googleapis.com/v1/places:autocomplete";
 const REVERSE_GEOCODE_URL = "https://maps.googleapis.com/maps/api/geocode/json";
@@ -34,11 +34,17 @@ export default function ClientSearchMapScreen() {
     const [destination, setDestination] = useState<{ address: string; lat: string; lng: string } | null>(null);
     const [focusedField, setFocusedField] = useState<"origin" | "destination">("origin");
     const [adress, setAdress] = useState<"pass" | "restring">("pass");
+    const [ocultarData, setOcultarData] = useState<"ok" | "none">("none");
     const [pinImage, setPinImage] = useState(require('../../../../assets/person_location.png'));
     const [routeData, setRouteData] = useState<{ polyline: number[][], distance: number, duration: string } | null>(null);
 
 
     useEffect(() => {
+
+
+
+        console.log("focus:", focusedField)
+
         if (focusedField === "origin") {
             setPinImage(require('../../../../assets/person_location.png')); // Imagen roja si es origen
         } else {
@@ -132,15 +138,20 @@ export default function ClientSearchMapScreen() {
                     }
 
                     if (field === "origin") {
-                        setInput(`🟢 ${placeName}`);
+                        setInput(placeName);
                         setOrigin({ address: placeName, lat: latitude.toString(), lng: longitude.toString() });
+                        setOcultarData("none")
+
                     } else {
-                        setDestinationInput(`🚩${placeName}`);
+                        setDestinationInput(placeName);
                         setDestination({ address: placeName, lat: latitude.toString(), lng: longitude.toString() });
+                        setOcultarData("none")
                     }
+
                 } else {
                     if (field === "origin") setInput("📍 Dirección no disponible");
                     else setDestinationInput("📍 Dirección no disponible");
+
                 }
             } catch (error) {
                 console.error("⚠️ Error obteniendo dirección:", error);
@@ -148,12 +159,16 @@ export default function ClientSearchMapScreen() {
                 else setDestinationInput("📍 Error al obtener la dirección");
             }
         }
+
     };
 
 
 
 
-    const fetchAutocompleteSuggestions = async (text: string, isDestination = false) => { // MODIFICADO
+    const fetchAutocompleteSuggestions = async (text: string, isDestination = false) => {
+        setOcultarData("ok")
+        console.log("en autocomplete: ", focusedField)
+
         if (text.length < 3) {
             isDestination ? setDestinationSuggestions([]) : setSuggestions([]);
             return;
@@ -333,10 +348,12 @@ export default function ClientSearchMapScreen() {
     }
 
     return (
+
         <View style={styles.container}>
             {/* Mapa en la parte superior */}
             <View style={styles.mapContainer}>
                 <MapView
+               
                     ref={mapRef}
                     style={styles.map}
                     initialRegion={location}
@@ -376,114 +393,143 @@ export default function ClientSearchMapScreen() {
             </View>
 
             {/* Contenedor de elementos en la parte inferior */}
+            <LinearGradient
+  colors={['#000000', '#333333', '#666666', '#000000']}
+  start={{ x: 0, y: 0 }}
+  end={{ x: 1, y: 1 }}
+  style={{width:"100%", borderTopLeftRadius: 20, borderTopRightRadius: 20 }}
+  >
             <View style={styles.controlsContainer}>
                 {/* Campo para la dirección de origen */}
 
-                <TextInput
-                    style={styles.input}
-                    placeholder="Recoger en..."
-                    value={input}
-                    onFocus={() => setFocusedField("origin")}
-                    onChangeText={(text) => {
-                        setInput(text);
-                        fetchAutocompleteSuggestions(text);
-                    }}
-                />
-                {suggestions.length > 0 && (
-                    <FlatList
-                        data={suggestions}
-                        keyExtractor={(item) => item.placePrediction.placeId}
-                        keyboardShouldPersistTaps="handled"
-                        renderItem={({ item }) => {
-                            const mainText = item.placePrediction.structuredFormat?.mainText?.text || "Sin nombre";
-                            const secondaryText = item.placePrediction.structuredFormat?.secondaryText?.text || "Sin ubicación";
 
-                            return (
-                                <TouchableOpacity
-                                    onPress={debounce(() => fetchPlaceDetails(
-                                        item.placePrediction.placeId,
-                                        false,
-                                        mainText || "Ubicación desconocida"
-                                    ), 200)}
-                                >
-                                    <View style={styles.suggestionItem}>
-                                        <Text style={styles.suggestionTextBold}>{mainText}</Text>
-                                        <Text style={styles.suggestionText}>{secondaryText}</Text>
-                                    </View>
-                                </TouchableOpacity>
-                            );
-                        }}
-                    />
-                )}
+                <View style={styles.containersuggestion}>
 
-                {/* Campo para la dirección de destino */}
-                <TextInput
-                    style={styles.input}
-                    placeholder="🚩 Destino..."
-                    value={destinationInput}
-                    onFocus={() => setFocusedField("destination")}
-                    onChangeText={(text) => {
-                        setDestinationInput(text);
-                        fetchAutocompleteSuggestions(text, true);
-                    }}
-                />
-                {destinationSuggestions.length > 0 && (
-                    <FlatList
-                        data={destinationSuggestions}
-                        keyExtractor={(item) => item.placePrediction.placeId}
-                        keyboardShouldPersistTaps="handled"
-                        renderItem={({ item }) => {
-                            const destinationMainText = item.placePrediction.structuredFormat?.mainText?.text || "Sin nombre";
-                            const destinationSecondaryText = item.placePrediction.structuredFormat?.secondaryText?.text || "Sin ubicación";
+                    <View style={[styles.rutaContainer, ocultarData=== "ok" && {display:"none"}]}>
+                        <Image source={require('../../../../assets/image-ruta.png')} style={styles.imgRuta} />
+                    </View>
+                    <View style={styles.containersuggestion_inputs}>
+                        <TextInput
+                            style={[styles.input_O ]}
+                            placeholder="Recoger en..."
+                             placeholderTextColor="#FFFFFF"
+                            value={input}
+                            onFocus={() => setFocusedField("origin")}
+                            onChangeText={(text) => {
+                                setInput(text);
 
-                            return (
-                                <TouchableOpacity
-                                    onPress={debounce(() => fetchPlaceDetails(
-                                        item.placePrediction.placeId,
-                                        true,
-                                        destinationMainText || "Ubicación desconocida"
-                                    ), 200)}
-                                >
-                                    <View style={styles.suggestionItem}>
-                                        <Text style={styles.suggestionTextBold}>{destinationMainText}</Text>
-                                        <Text style={styles.suggestionText}>{destinationSecondaryText}</Text>
-                                    </View>
-                                </TouchableOpacity>
-                            );
-                        }}
-                    />
-                )}
+                                fetchAutocompleteSuggestions(text);
+                                setFocusedField("origin")
+                            }}
+                        />
+                        {suggestions.length > 0 && (
+                            <FlatList
+                                data={suggestions}
+                                keyExtractor={(item) => item.placePrediction.placeId}
+                                keyboardShouldPersistTaps="handled"
+                                renderItem={({ item }) => {
+                                    const mainText = item.placePrediction.structuredFormat?.mainText?.text || "Sin nombre";
+                                    const secondaryText = item.placePrediction.structuredFormat?.secondaryText?.text || "Sin ubicación";
 
-                {/* Botón para buscar conductor */}
+                                    return (
+                                        <TouchableOpacity
+                                            onPress={debounce(() => {
+                                                Keyboard.dismiss(); // Oculta el teclado
+                                                setOcultarData("none");
+                                                fetchPlaceDetails(
+                                                    item.placePrediction.placeId,
+                                                    false,
+                                                    mainText || "Ubicación desconocida"
+                                                );
+                                            }, 200)}
+                                        >
+                                            <View style={styles.suggestionItem}>
+                                                <Text style={styles.suggestionTextBold}>{mainText}</Text>
+                                                <Text style={styles.suggestionText}>{secondaryText}</Text>
+                                            </View>
+                                        </TouchableOpacity>
+                                    );
+                                }}
+                            />
+                        )}
 
-                <View style={styles.containerTargetas}>
-      {/* Tarjeta de duración */}
-      <View style={styles.card}>
-        <Text style={styles.icon}>⏳</Text>
-        <Text style={styles.label}>Duración</Text>
-        <Text style={styles.value}>
-          {routeData?.duration ? (Number(routeData.duration.slice(0, -1)) / 60).toFixed(1) : "0"} min
-        </Text>
-      </View>
+                        {/* Campo para la dirección de destino */}
+                        <TextInput
+                            style={styles.input_D}
+                            placeholder="Destino..."
+                            placeholderTextColor="#FFFFFF"
+                            value={destinationInput}
 
-      {/* Tarjeta de distancia */}
-      <View style={styles.card}>
-        <Text style={styles.icon}>📏</Text>
-        <Text style={styles.label}>Distancia</Text>
-        <Text style={styles.value}>{routeData?.distance ?? "0 km"}</Text>
-      </View>
+                            onChangeText={(text) => {
+                                setDestinationInput(text);
+                                fetchAutocompleteSuggestions(text, true);
+                                setFocusedField("destination")
+                            }}
+                        />
+                        {destinationSuggestions.length > 0 && (
+                            <FlatList
+                                data={destinationSuggestions}
+                                keyExtractor={(item) => item.placePrediction.placeId}
+                                keyboardShouldPersistTaps="handled"
+                                renderItem={({ item }) => {
+                                    const destinationMainText = item.placePrediction.structuredFormat?.mainText?.text || "Sin nombre";
+                                    const destinationSecondaryText = item.placePrediction.structuredFormat?.secondaryText?.text || "Sin ubicación";
 
-      {/* Tarjeta de precio */}
-      <View style={styles.card}>
-        <Text style={styles.icon}>💲</Text>
-        <Text style={styles.label }>Tarifa</Text>        
-        <Text style={styles.price}>
-          {calcularPrecio(routeData?.distance ?? 0, routeData?.duration ?? "0s")}
-        </Text>
-      </View>
-    </View>
-                 <DefaultRoundedButton text="Buscar conductor" onPress={fetchRoute} />
+                                    return (
+                                        <TouchableOpacity
+                                            onPress={debounce(() => {
+                                                Keyboard.dismiss();   //oculta tecaldo
+                                                setOcultarData("none");
+                                                fetchPlaceDetails(
+                                                    item.placePrediction.placeId,
+                                                    true,
+                                                    destinationMainText || "Ubicación desconocida"
+                                                )
+                                            }, 200)}
+                                        >
+                                            <View style={styles.suggestionItem}>
+                                                <Text style={styles.suggestionTextBold}>{destinationMainText}</Text>
+                                                <Text style={styles.suggestionText}>{destinationSecondaryText}</Text>
+                                            </View>
+                                        </TouchableOpacity>
+                                    );
+                                }}
+                            />
+                        )}
+                    </View>
+                </View>
+
+
+
+                <View style={[styles.containerTargetas, ocultarData === "ok" && { display: "none" }]}>
+                    {/* Tarjeta de duración */}
+                    <View style={styles.card}>
+                    <Image source={require('../../../../assets/duracion.png')} style={styles.Img_card} />
+                        <Text style={styles.label}>Duración</Text>
+                        <Text style={styles.value}>
+                            {routeData?.duration ? (Number(routeData.duration.slice(0, -1)) / 60).toFixed(1) : "0"} min
+                        </Text>
+                    </View>
+
+                    {/* Tarjeta de distancia */}
+                    <View style={styles.card}>
+                        <Text style={styles.icon}>📏</Text>
+                        <Text style={styles.label}>Distancia</Text>
+                        <Text style={styles.value}>{routeData?.distance ?? "0 km"}</Text>
+                    </View>
+
+                    {/* Tarjeta de precio */}
+                    <View style={styles.card}>
+                    <Image source={require('../../../../assets/pesos.png')} style={styles.Img_card} />
+                        <Text style={styles.label}>Tarifa</Text>
+                        <Text style={styles.price}>
+                            {calcularPrecio(routeData?.distance ?? 0, routeData?.duration ?? "0s")}
+                        </Text>
+                    </View>
+                </View>
+                <DefaultRoundedButton text="Buscar conductor" onPress={fetchRoute} />
             </View>
+            </LinearGradient>
         </View>
     );
 }    

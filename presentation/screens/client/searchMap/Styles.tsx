@@ -2,116 +2,131 @@ import { StyleSheet, Dimensions } from 'react-native';
 
 const { width, height } = Dimensions.get("window");
 
-export default StyleSheet.create({
-   
-    container: {
-        flex: 1,
-        backgroundColor: "#fff",
-    },
-    mapContainer: {
-        flex: 1, // El mapa ocupa la parte superior
-    },
-    map: {
-        width: "100%",
-        height: "100%",
-    },
-    controlsContainer: {
-        position: "absolute",
-        bottom: 0,
-        left: 0,
-        right: 0,       
-        padding: 10,
-        borderTopLeftRadius: 30,
-        backgroundColor:"white",
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: -2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-        elevation: 5,
-    },
+export const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#F5F5F5", // Negro elegante con un toque moderno
     
-    input: {
-        width: "100%",
-        height: 40,          
-        paddingLeft: 15,         
-        fontWeight: "bold",
-        borderBottomWidth: 1,
-        borderColor: "#D6D6D6",  
-    },
-    suggestionItem: {
-        padding: 10,
-        borderBottomWidth: 1,
-        borderColor: "#D6D6D6",    
-        backgroundColor:"white"   
-        
-    },
-    suggestionTextBold: {
-        fontSize: 16,
-        fontWeight: "bold",
-        
-    },
-    suggestionText: {        fontSize: 14,
-        
-        fontWeight: "bold"
-        
-    },
-    pinContainer: {
-        position: "absolute",
-        top: "50%",
-        left: "50%",
-        transform: [{ translateX: -25 }, { translateY: -52 }], // Centra el pin correctamente
-        width: 50, // Asegurar el mismo tamaño que el pin
-        height: 50, // Asegurar el mismo tamaño que el pin
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    pin: {
-        width: 50,
-        height: 50,
-        resizeMode: "contain",
-    },
-    circleMarker:{
+  },
+  mapContainer: {
+    flex: 1,
+    borderColor: "#FF3B3B", // Borde rojo vibrante
+  },
+  map: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  pinContainer: {
+    position: "absolute",
+    top: "50%",
+    left: "50%",
+    transform: [{ translateX: -20 }, { translateY: -40 }],
+  },
+  pin: {
+    width: 40,
+    height: 40,
+  },
+  controlsContainer: {
+    padding: 20,
+    backgroundColor: "transparent",
+    borderRadius: 15,
+    width:"100%"
+  },
+  containersuggestion: {
+    flexDirection: "row",
+    alignItems: "center",   
+        borderRadius: 12,
+    borderLeftWidth: 5,
+    borderLeftColor: "#FF3B3B",
+  },
+  rutaContainer: {
+    width: "15%",
+    alignItems: "center",
+  },
+  imgRuta: {
+    width: "100%",
+    height: 90,
+    resizeMode: "contain",
+  },
+  containersuggestion_inputs: {
+    width: "90%",
+  },
+  input_O: {
+    width: "100%",    
+    fontSize: 18,
+    color: "#FFF",  
+    borderBottomWidth: 1,
+    borderBottomColor: "#666666",
+         
+  },
+  input_D: {
+    width: "100%",    
+    fontSize: 18,
+    color: "#FFF",    
+         
+  },
+  suggestionItem: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: "#444",
+  },
+  suggestionTextBold: {
+    fontWeight: "bold",
+    fontSize: 18,
+    color: "white",
+  },
+  suggestionText: {
+    fontSize: 16,
+    color: "#DDD",
+  },
+  containerTargetas: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    padding: 20,
+  },
+  card: {
+    padding: 5,
+    alignItems: "center",
+    width: "30%",
+    backgroundColor: "#1A1A1A",
+    borderRadius: 15,
+    borderWidth: 0.5,
+    borderColor: "#FF3B3B",
+    shadowColor: "#FF3B3B",    
+    shadowOpacity: 0.5,
+    shadowRadius: 15,
+  },
+  icon: {
+    fontSize: 28,
+    color: "#FF3B3B",
+  },
+  label: {
+    fontSize: 16,
+    color: "#EEE",
+    marginTop: 8,
+  },
+  value: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#FFF",
+    marginTop: 1,
+  },
+  price: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "green",
+    marginTop: 1,
+  },
+  Img_card:{
+    width: "100%",
+    height: 50,
+    resizeMode: "contain",
+  },
+  
+  circleMarker: {
 
-    },
-    squareMarker:{
+  },
+  squareMarker: {
 
-    },
-    containerTargetas: {
-        flexDirection: "row", // Alinear en fila
-        justifyContent: "space-between", // Espaciado uniforme
-        padding: 10,
-      },
-      card: {
-        flex: 1, // Para que ocupen el mismo espacio
-        backgroundColor: "white",
-        borderRadius: 10,
-        padding: 15,
-        alignItems: "center",
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-        elevation: 5, // Sombra en Android
-        marginHorizontal: 5, // Espaciado entre tarjetas
-      },
-      icon: {
-        fontSize: 24, // Tamaño grande del icono
-        marginBottom: 5,
-      },
-      label: {
-        fontSize: 14,
-        fontWeight: "bold",
-        color: "#555", // Gris oscuro
-        marginBottom: 3,
-      },
-      value: {
-        fontSize: 18,
-        fontWeight: "bold",
-        color: "#000", // Negro
-      },
-      price:{
-        fontSize: 22,
-        fontWeight: "bold",
-        color: "green", // Negro
-      }
+  }
+
 });
