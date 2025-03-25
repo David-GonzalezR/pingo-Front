@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { Text, View, TextInput, FlatList, TouchableOpacity, Image, Dimensions, Keyboard } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { Text, View, TextInput, FlatList, TouchableOpacity, Image, Dimensions, Keyboard, Alert, Animated } from "react-native";
 import MapView, { Marker, Region } from "react-native-maps";
 import * as Location from 'expo-location';
 import { styles } from './Styles';
@@ -9,6 +9,7 @@ import { Polyline } from "react-native-maps";
 import DefaultRoundedButton from "../../../componets/DefaultRoundedButton";
 import { LinearGradient } from "expo-linear-gradient";
 import { green } from "react-native-reanimated/lib/typescript/Colors";
+import OfferModal from "../../../componets/DefaultModalInput";
 const polyline = require("@mapbox/polyline");
 
 const { width, height } = Dimensions.get("window");
@@ -37,21 +38,41 @@ export default function ClientSearchMapScreen() {
     const [ocultarData, setOcultarData] = useState<"ok" | "none">("none");
     const [pinImage, setPinImage] = useState(require('../../../../assets/person_location.png'));
     const [routeData, setRouteData] = useState<{ polyline: number[][], distance: number, duration: string } | null>(null);
+    const [isOfferModalVisible, setIsOfferModalVisible] = useState(false)
+    const [offer, setOffer] = useState<number | null>(null);
+    const [isInteractingWithMap, setIsInteractingWithMap] = useState(false);
+    const translateYAnim = useRef(new Animated.Value(0)).current;
+    const fadeAnim = useRef(new Animated.Value(1)).current; // Inicialmente visible
+
+    
+    useEffect(() => {
+        Animated.timing(fadeAnim, {
+            toValue: isInteractingWithMap ? 0 : 1, 
+            duration: 300,
+            useNativeDriver: true,
+        }).start();
+
+        Animated.timing(translateYAnim, {
+            toValue: isInteractingWithMap ? 80 : 0, // Mueve 20px hacia abajo
+            duration: 300,
+            useNativeDriver: true,
+        }).start();
+    }, [isInteractingWithMap]);
 
     useEffect(() => {
         if (routeData && routeData.polyline.length > 1) {
-          mapRef.current?.fitToCoordinates(
-            routeData.polyline.map(point => ({
-              latitude: point[0],
-              longitude: point[1],
-            })),
-            {
-              edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
-              animated: true,
-            }
-          );
+            mapRef.current?.fitToCoordinates(
+                routeData.polyline.map(point => ({
+                    latitude: point[0],
+                    longitude: point[1],
+                })),
+                {
+                    edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
+                    animated: true,
+                }
+            );
         }
-      }, [routeData]);
+    }, [routeData]);
     useEffect(() => {
 
 
@@ -274,8 +295,9 @@ export default function ClientSearchMapScreen() {
 
     //implementacion dibujar ruta
     const fetchRoute = async () => {
+        setAdress("restring")
         if (!origin || !destination) {
-            console.log("⚠️ Debes seleccionar un origen y un destino.");
+            Alert.alert("⚠️ Debes seleccionar un origen y un destino.");
             return;
         }
 
@@ -331,7 +353,7 @@ export default function ClientSearchMapScreen() {
 
                 <Polyline
                     coordinates={decodedPolyline}
-                    strokeColor="blue" // Cambia el color a uno más visible
+                    strokeColor="red" // Cambia el color a uno más visible
                     strokeWidth={6} // Aumenta el grosor de la línea
                 />
 
@@ -348,6 +370,7 @@ export default function ClientSearchMapScreen() {
             console.error("⚠️ Error obteniendo la ruta:", error);
         }
     };
+
 
 
 
@@ -369,6 +392,8 @@ export default function ClientSearchMapScreen() {
 
                     ref={mapRef}
                     style={styles.map}
+                    onTouchStart={() => setIsInteractingWithMap(true)}  // Ocultar controles al tocar el mapa
+                    onTouchEnd={() => setIsInteractingWithMap(false)}
                     initialRegion={location}
                     onRegionChangeComplete={(region) => {
                         setLocation(region);
@@ -376,42 +401,42 @@ export default function ClientSearchMapScreen() {
                         setAdress("pass");
                     }}
                 >
-   {/* Dibujar la línea de la ruta */}
-   {routeData && routeData.polyline.length > 1 && (
-  <>
-    {/* Línea de la ruta */}
-    <Polyline
-      coordinates={routeData.polyline.map((point) => ({
-        latitude: point[0],  
-        longitude: point[1],
-      }))}
-      strokeWidth={5}
-      strokeColor="blue"
-    />
+                    {/* Dibujar la línea de la ruta */}
+                    {routeData && routeData.polyline.length > 1 && (
+                        <>
+                            {/* Línea de la ruta */}
+                            <Polyline
+                                coordinates={routeData.polyline.map((point) => ({
+                                    latitude: point[0],
+                                    longitude: point[1],
+                                }))}
+                                strokeWidth={5}
+                                strokeColor="blue"
+                            />
 
-    {/* Marcador de inicio */}
-    <Marker
-      coordinate={{
-        latitude: routeData.polyline[0][0],  
-        longitude: routeData.polyline[0][1],  
-      }}
-      title="Inicio"
-    >
-      <Image source={require('../../../../assets/pin_map.png')} style={{ width: 40, height: 40 }} />
-    </Marker>
+                            {/* Marcador de inicio */}
+                            <Marker
+                                coordinate={{
+                                    latitude: routeData.polyline[0][0],
+                                    longitude: routeData.polyline[0][1],
+                                }}
+                                title="Inicio"
+                            >
+                                <Image source={require('../../../../assets/inicio.png')} style={{ width: 40, height: 40 }} />
+                            </Marker>
 
-    {/* Marcador de destino */}
-    <Marker
-      coordinate={{
-        latitude: routeData.polyline[routeData.polyline.length - 1][0],  
-        longitude: routeData.polyline[routeData.polyline.length - 1][1],  
-      }}
-      title="Destino"
-    >
-      <Image source={require('../../../../assets/pin_map.png')} style={{ width: 40, height: 40 }} />
-    </Marker>
-  </>
-)}
+                            {/* Marcador de destino */}
+                            <Marker
+                                coordinate={{
+                                    latitude: routeData.polyline[routeData.polyline.length - 1][0],
+                                    longitude: routeData.polyline[routeData.polyline.length - 1][1],
+                                }}
+                                title="Destino"
+                            >
+                                <Image source={require('../../../../assets/destinoR.png')} style={{ width: 40, height: 40 }} />
+                            </Marker>
+                        </>
+                    )}
 
                 </MapView>
                 <View style={styles.pinContainer}>
@@ -420,6 +445,15 @@ export default function ClientSearchMapScreen() {
             </View>
 
             {/* Contenedor de elementos en la parte inferior */}
+            <Animated.View 
+                style={[
+                    styles.controlsContainerA, 
+                    { 
+                        opacity: fadeAnim,
+                        transform: [{ translateY: translateYAnim }]
+                    }
+                ]}
+            >
             <LinearGradient
                 colors={['#000000', '#333333', '#666666', '#000000']}
                 start={{ x: 0, y: 0 }}
@@ -439,7 +473,7 @@ export default function ClientSearchMapScreen() {
                             <TextInput
                                 style={[styles.input_O]}
                                 placeholder="Recoger en..."
-                                placeholderTextColor="#FFFFFF"
+                                placeholderTextColor="#A8A8A8"
                                 value={input}
                                 onFocus={() => setFocusedField("origin")}
                                 onChangeText={(text) => {
@@ -484,7 +518,7 @@ export default function ClientSearchMapScreen() {
                             <TextInput
                                 style={styles.input_D}
                                 placeholder="Destino..."
-                                placeholderTextColor="#FFFFFF"
+                                placeholderTextColor="#A8A8A8"
                                 value={destinationInput}
 
                                 onChangeText={(text) => {
@@ -539,12 +573,30 @@ export default function ClientSearchMapScreen() {
                         </View>
 
                         {/* Tarjeta de distancia */}
-                        <View style={styles.card}>
-                            <Text style={styles.icon}>📏</Text>
-                            <Text style={styles.label}>Distancia</Text>
-                            <Text style={styles.value}>{routeData?.distance ?? "0 km"}</Text>
+                        <View >
+                            <DefaultRoundedButton
+                                text={offer ? `${offer.toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : "Ofertar"}
+                                onPress={() => setIsOfferModalVisible(true)}
+                                padding={10}
+                                fontSize={15} // Hace el texto más grande
+                            />
+                            <DefaultRoundedButton
+                                text="Hecho"
+                                onPress={fetchRoute}
+                                padding={10}
+                                fontSize={15}
+                            />
+
                         </View>
 
+                        <OfferModal
+                            isVisible={isOfferModalVisible}
+                            onClose={() => setIsOfferModalVisible(false)}
+                            onOfferSubmit={(value) => {
+                                setOffer(value);
+                                setIsOfferModalVisible(false);
+                            }}
+                        />
                         {/* Tarjeta de precio */}
                         <View style={styles.card}>
                             <Image source={require('../../../../assets/pesos.png')} style={styles.Img_card} />
@@ -557,6 +609,7 @@ export default function ClientSearchMapScreen() {
                     <DefaultRoundedButton text="Buscar conductor" onPress={fetchRoute} />
                 </View>
             </LinearGradient>
+            </Animated.View>
         </View>
     );
 }    
