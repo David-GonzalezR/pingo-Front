@@ -10,8 +10,7 @@ export const styles = StyleSheet.create({
   },
   mapContainer: {
     flex: 1,
-    borderColor: "#FF3B3B", // Borde rojo vibrante
-    
+       
   },
   map: {
     ...StyleSheet.absoluteFillObject,
@@ -27,10 +26,9 @@ export const styles = StyleSheet.create({
     height: 40,
   },
   controlsContainer: {
-    padding: 5,
-
+    padding: 15,
     backgroundColor: "transparent",
-    borderRadius: 15,
+    borderRadius: 1,
     width: "100%"
   },
   containersuggestion: {
@@ -68,13 +66,14 @@ export const styles = StyleSheet.create({
 
   },
   suggestionItem: {
-    padding: 5,
+    padding: 8,
+    paddingLeft:20,
     borderBottomWidth: 1,
     borderBottomColor: "#444",
   },
   suggestionTextBold: {
     
-    fontSize: 18,
+    fontSize: 16,
     color: "white",
   },
   suggestionText: {
@@ -84,6 +83,7 @@ export const styles = StyleSheet.create({
   containerTargetas: {
     flexDirection: "row",
     justifyContent: "space-around",
+    marginTop:10,
     padding: 5,
   },
   card: {

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Text, View, TextInput, FlatList, TouchableOpacity, Image, Dimensions, Keyboard, Alert, Animated } from "react-native";
+import { Text, View, TextInput, FlatList, TouchableOpacity, Image, Dimensions, Keyboard, Alert, Animated, Easing } from "react-native";
 import MapView, { Marker, Region } from "react-native-maps";
 import * as Location from 'expo-location';
 import { styles } from './Styles';
@@ -39,13 +39,22 @@ export default function ClientSearchMapScreen() {
     const [pinImage, setPinImage] = useState(require('../../../../assets/person_location.png'));
     const [routeData, setRouteData] = useState<{ polyline: number[][], distance: number, duration: string } | null>(null);
     const [isDetailsModalVisible, setIsDetailsModalVisible] = useState(false)
-    const [details, setDetails] = useState<string| null>(null);
+    const [details, setDetails] = useState<string | null>(null);
     const [isInteractingWithMap, setIsInteractingWithMap] = useState(false);
     const translateYAnim = useRef(new Animated.Value(0)).current;
     const fadeAnim = useRef(new Animated.Value(1)).current; // Inicialmente visible
-
-
+    const mapMarginBottomAnim = useRef(new Animated.Value(100)).current; // Valor inicial de 100
+    const animationValue = new Animated.Value(0); // Estado de animación inicial de la ruta
+    const [mapActive, setMapActive] = useState(true);
     useEffect(() => {
+        // Animar la transición del margen inferior
+        Animated.timing(mapMarginBottomAnim, {
+            toValue: isInteractingWithMap ? 0 : 100, // Cambia dinámicamente
+            duration: 300, // Duración de la animación en ms
+            easing: Easing.out(Easing.ease), // Hace la transición más fluida
+            useNativeDriver: false, // No es compatible con layout (marginBottom), así que debe ser false
+        }).start();
+
         Animated.timing(fadeAnim, {
             toValue: isInteractingWithMap ? 0 : 1,
             duration: 300,
@@ -53,26 +62,45 @@ export default function ClientSearchMapScreen() {
         }).start();
 
         Animated.timing(translateYAnim, {
-            toValue: isInteractingWithMap ? 90 : 0, // Mueve 20px hacia abajo
+            toValue: isInteractingWithMap ? 90 : 0,
             duration: 300,
             useNativeDriver: true,
         }).start();
     }, [isInteractingWithMap]);
 
+
+
+
+
+
     useEffect(() => {
         if (routeData && routeData.polyline.length > 1) {
-            mapRef.current?.fitToCoordinates(
-                routeData.polyline.map(point => ({
-                    latitude: point[0],
-                    longitude: point[1],
-                })),
-                {
-                    edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
-                    animated: true,
-                }
-            );
+            setAdress("restring")
+            // Iniciar animación de transición de la ruta
+            Animated.timing(animationValue, {
+                toValue: 1, // Llega al estado final
+                duration: 900, // Duración de la animación (ajustable)
+                useNativeDriver: true,
+            }).start(() => {
+                // Una vez terminada la animación, ajustar el zoom
+                setTimeout(() => {
+                    mapRef.current?.fitToCoordinates(
+                        routeData.polyline.map(point => ({
+                            latitude: point[0],
+                            longitude: point[1],
+                        })),
+                        {
+                            edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
+                            animated: true,
+                        }
+                    );
+                    animationValue.setValue(0); // Reiniciar animación
+                }, 400);
+            });
         }
     }, [routeData]);
+
+
 
 
     useEffect(() => {
@@ -80,7 +108,7 @@ export default function ClientSearchMapScreen() {
         if (focusedField === "origin") {
             setPinImage(require('../../../../assets/person_location.png')); // Imagen roja si es origen
         } else {
-            setPinImage(require('../../../../assets/alfiler.png')); // Imagen azul si es destino
+            setPinImage(require('../../../../assets/destino.png')); // Imagen azul si es destino
         }
         if (origin !== null && destination !== null) {
             console.log("viaje completado")
@@ -199,13 +227,12 @@ export default function ClientSearchMapScreen() {
 
     const fetchAutocompleteSuggestions = async (text: string, isDestination = false) => {
         setOcultarData("ok");
-        console.log("en autocomplete: ", focusedField);
-    
+
         if (text.length < 3) {
             isDestination ? setDestinationSuggestions([]) : setSuggestions([]);
             return;
         }
-    
+
         try {
             const response = await fetch(API_URL, {
                 method: "POST",
@@ -223,21 +250,21 @@ export default function ClientSearchMapScreen() {
                                 latitude: location?.latitude,
                                 longitude: location?.longitude
                             },
-                            radius: 1500.0
+                            radius: 1500
                         }
                     }
                 })
             });
-    
+
             const result = await response.json();
             const limitedSuggestions = (result.suggestions || []).slice(0, 5);
-    
+
             isDestination ? setDestinationSuggestions(limitedSuggestions) : setSuggestions(limitedSuggestions);
         } catch (error) {
             console.error("⚠️ Error en Autocomplete:", error);
         }
     };
-    
+
     const fetchPlaceDetails = async (placeId: string, isDestination = false, placeName: string) => {
 
         if (focusedField) {
@@ -293,82 +320,83 @@ export default function ClientSearchMapScreen() {
     }
 
 
-   //implementacion dibujar ruta
-   const fetchRoute = async () => {
-    if (!origin || !destination) {
-        console.log("⚠️ Debes seleccionar un origen y un destino.");
-        return;
-    }
+    //implementacion dibujar ruta
+    const fetchRoute = async () => {
+        if (!origin || !destination) {
+            console.log("⚠️ Debes seleccionar un origen y un destino.");
+            return;
+        }
 
-    try {
-        const response = await fetch("https://routes.googleapis.com/directions/v2:computeRoutes", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "X-Goog-Api-Key": API_KEY,
-                "X-Goog-FieldMask": "routes.duration,routes.distanceMeters,routes.polyline",
-            },
-            body: JSON.stringify({
-                origin: {
-                    location: {
-                        latLng: {
-                            latitude: parseFloat(origin.lat), // Se usa la variable origin
-                            longitude: parseFloat(origin.lng)
-                        }
-                    }
+        try {
+
+            const response = await fetch("https://routes.googleapis.com/directions/v2:computeRoutes", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-Goog-Api-Key": API_KEY,
+                    "X-Goog-FieldMask": "routes.duration,routes.distanceMeters,routes.polyline",
                 },
-                destination: {
-                    location: {
-                        latLng: {
-                            latitude: parseFloat(destination.lat), // Se usa la variable destination
-                            longitude: parseFloat(destination.lng)
+                body: JSON.stringify({
+                    origin: {
+                        location: {
+                            latLng: {
+                                latitude: parseFloat(origin.lat), // Se usa la variable origin
+                                longitude: parseFloat(origin.lng)
+                            }
                         }
-                    }
-                },
-                travelMode: "DRIVE"
-            })
-        });
-
-        const result = await response.json();
-        console.log("Ruta calculada:", result);
-
-        if (result.routes && result.routes.length > 0) {
-            const route = result.routes[0];
-
-            console.log("Duración:", route.duration);
-            console.log("Distancia:", route.distanceMeters, "metros");
-
-            // Decodificar la polyline y almacenarla en el estado
-            const decodedPolyline = polyline.decode(route.polyline.encodedPolyline);
-            setRouteData({ polyline: decodedPolyline, distance: route.distanceMeters, duration: route.duration });
-
-            if (mapRef.current && decodedPolyline.length > 0) {
-                mapRef.current.fitToCoordinates(decodedPolyline, {
-                    edgePadding: { top: 50, right: 50, bottom: 50, left: 50 }, // Espacio alrededor de la ruta
-                    animated: false, // Suaviza la animación
-                });
-            }
-
-
-            <Polyline
-                coordinates={decodedPolyline}
-                strokeColor="blue" // Cambia el color a uno más visible
-                strokeWidth={6} // Aumenta el grosor de la línea
-            />
-
-            mapRef.current?.fitToCoordinates(decodedPolyline, {
-                edgePadding: { top: 100, right: 100, bottom: 100, left: 100 },
-                animated: false,
+                    },
+                    destination: {
+                        location: {
+                            latLng: {
+                                latitude: parseFloat(destination.lat), // Se usa la variable destination
+                                longitude: parseFloat(destination.lng)
+                            }
+                        }
+                    },
+                    travelMode: "DRIVE"
+                })
             });
 
+            const result = await response.json();
+            console.log("Ruta calculada:", result);
 
-        } else {
-            console.log("⚠️ No se pudo calcular la ruta.");
+            if (result.routes && result.routes.length > 0) {
+                const route = result.routes[0];
+
+                console.log("Duración:", route.duration);
+                console.log("Distancia:", route.distanceMeters, "metros");
+
+                // Decodificar la polyline y almacenarla en el estado
+                const decodedPolyline = polyline.decode(route.polyline.encodedPolyline);
+                setRouteData({ polyline: decodedPolyline, distance: route.distanceMeters, duration: route.duration });
+
+                if (mapRef.current && decodedPolyline.length > 0) {
+                    mapRef.current.fitToCoordinates(decodedPolyline, {
+                        edgePadding: { top: 50, right: 50, bottom: 50, left: 50 }, // Espacio alrededor de la ruta
+                        animated: false, // Suaviza la animación
+                    });
+                }
+
+
+                <Polyline
+                    coordinates={decodedPolyline}
+                    strokeColor="blue" // Cambia el color a uno más visible
+                    strokeWidth={6} // Aumenta el grosor de la línea
+                />
+
+                mapRef.current?.fitToCoordinates(decodedPolyline, {
+                    edgePadding: { top: 100, right: 100, bottom: 100, left: 100 },
+                    animated: false,
+                });
+
+
+            } else {
+                console.log("⚠️ No se pudo calcular la ruta.");
+            }
+        } catch (error) {
+            console.error("⚠️ Error obteniendo la ruta:", error);
         }
-    } catch (error) {
-        console.error("⚠️ Error obteniendo la ruta:", error);
-    }
-};
+    };
 
 
 
@@ -386,16 +414,16 @@ export default function ClientSearchMapScreen() {
 
         <View style={styles.container}>
             {/* Mapa en la parte superior */}
-            <View style={styles.mapContainer}>
-                <MapView
+            <Animated.View style={[styles.mapContainer, { marginBottom: mapMarginBottomAnim }]}>
+                <MapView scrollEnabled={mapActive}
+                    zoomEnabled={mapActive}
+                    rotateEnabled={mapActive}
 
                     ref={mapRef}
                     style={styles.map}
                     onTouchStart={() => setIsInteractingWithMap(true)}  // Ocultar controles al tocar el mapa
                     onTouchEnd={() => setIsInteractingWithMap(false)}
                     initialRegion={location}
-                    paddingAdjustmentBehavior="automatic"
-                    mapPadding={{ top: 0, right: 0, bottom: 100, left: 0 }} // Agrega padding en la parte superior
                     onRegionChangeComplete={(region) => {
                         setLocation(region);
                         fetchAddress(region.latitude, region.longitude, focusedField);
@@ -411,8 +439,8 @@ export default function ClientSearchMapScreen() {
                                     latitude: point[0],
                                     longitude: point[1],
                                 }))}
-                                strokeWidth={5}
-                                strokeColor="green"
+                                strokeWidth={7}
+                                strokeColor="#25D366"
                             />
 
                             {/* Marcador de inicio */}
@@ -443,7 +471,7 @@ export default function ClientSearchMapScreen() {
                 <View style={styles.pinContainer}>
                     <Image source={pinImage} style={styles.pin} />
                 </View>
-            </View>
+            </Animated.View>
 
             {/* Contenedor de elementos en la parte inferior */}
             <Animated.View
@@ -482,6 +510,7 @@ export default function ClientSearchMapScreen() {
 
                                         fetchAutocompleteSuggestions(text);
                                         setFocusedField("origin")
+                                        setMapActive(true);
                                     }}
                                 />
                                 {suggestions.length > 0 && (
@@ -518,7 +547,7 @@ export default function ClientSearchMapScreen() {
                                 {/* Campo para la dirección de destino */}
                                 <TextInput
                                     style={styles.input_D}
-                                    placeholder="Destino..."
+                                    placeholder="🔍 Destino..."
                                     placeholderTextColor="#A8A8A8"
                                     value={destinationInput}
 
@@ -526,6 +555,7 @@ export default function ClientSearchMapScreen() {
                                         setDestinationInput(text);
                                         fetchAutocompleteSuggestions(text, true);
                                         setFocusedField("destination")
+                                        setMapActive(true);
                                     }}
                                 />
                                 {destinationSuggestions.length > 0 && (
@@ -584,9 +614,14 @@ export default function ClientSearchMapScreen() {
 
 
                                 <TouchableOpacity
-                                    onPress={fetchRoute}
+
+                                    onPress={() => {
+                                        setMapActive(false);
+                                        fetchRoute();
+                                    }}
                                     style={styles.button} >
                                     <Text style={{ color: 'white', fontSize: 16 }}>Hecho </Text>
+
                                 </TouchableOpacity>
 
 
