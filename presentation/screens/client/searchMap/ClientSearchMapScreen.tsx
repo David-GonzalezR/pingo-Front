@@ -9,7 +9,7 @@ import { Polyline } from "react-native-maps";
 import DefaultRoundedButton from "../../../componets/DefaultRoundedButton";
 import { LinearGradient } from "expo-linear-gradient";
 import { green } from "react-native-reanimated/lib/typescript/Colors";
-import OfferModal from "../../../componets/DefaultModalInput";
+import DetailsModal from "../../../componets/DefaultModalInput";
 const polyline = require("@mapbox/polyline");
 
 const { width, height } = Dimensions.get("window");
@@ -38,22 +38,22 @@ export default function ClientSearchMapScreen() {
     const [ocultarData, setOcultarData] = useState<"ok" | "none">("none");
     const [pinImage, setPinImage] = useState(require('../../../../assets/person_location.png'));
     const [routeData, setRouteData] = useState<{ polyline: number[][], distance: number, duration: string } | null>(null);
-    const [isOfferModalVisible, setIsOfferModalVisible] = useState(false)
-    const [offer, setOffer] = useState<number | null>(null);
+    const [isDetailsModalVisible, setIsDetailsModalVisible] = useState(false)
+    const [details, setDetails] = useState<string| null>(null);
     const [isInteractingWithMap, setIsInteractingWithMap] = useState(false);
     const translateYAnim = useRef(new Animated.Value(0)).current;
     const fadeAnim = useRef(new Animated.Value(1)).current; // Inicialmente visible
 
-    
+
     useEffect(() => {
         Animated.timing(fadeAnim, {
-            toValue: isInteractingWithMap ? 0 : 1, 
+            toValue: isInteractingWithMap ? 0 : 1,
             duration: 300,
             useNativeDriver: true,
         }).start();
 
         Animated.timing(translateYAnim, {
-            toValue: isInteractingWithMap ? 80 : 0, // Mueve 20px hacia abajo
+            toValue: isInteractingWithMap ? 90 : 0, // Mueve 20px hacia abajo
             duration: 300,
             useNativeDriver: true,
         }).start();
@@ -73,11 +73,9 @@ export default function ClientSearchMapScreen() {
             );
         }
     }, [routeData]);
+
+
     useEffect(() => {
-
-
-
-        console.log("focus:", focusedField)
 
         if (focusedField === "origin") {
             setPinImage(require('../../../../assets/person_location.png')); // Imagen roja si es origen
@@ -200,14 +198,14 @@ export default function ClientSearchMapScreen() {
 
 
     const fetchAutocompleteSuggestions = async (text: string, isDestination = false) => {
-        setOcultarData("ok")
-        console.log("en autocomplete: ", focusedField)
-
+        setOcultarData("ok");
+        console.log("en autocomplete: ", focusedField);
+    
         if (text.length < 3) {
             isDestination ? setDestinationSuggestions([]) : setSuggestions([]);
             return;
         }
-
+    
         try {
             const response = await fetch(API_URL, {
                 method: "POST",
@@ -225,19 +223,21 @@ export default function ClientSearchMapScreen() {
                                 latitude: location?.latitude,
                                 longitude: location?.longitude
                             },
-                            radius: 10000.0
+                            radius: 1500.0
                         }
                     }
                 })
             });
-
+    
             const result = await response.json();
-            isDestination ? setDestinationSuggestions(result.suggestions || []) : setSuggestions(result.suggestions || []);
+            const limitedSuggestions = (result.suggestions || []).slice(0, 5);
+    
+            isDestination ? setDestinationSuggestions(limitedSuggestions) : setSuggestions(limitedSuggestions);
         } catch (error) {
             console.error("⚠️ Error en Autocomplete:", error);
         }
     };
-
+    
     const fetchPlaceDetails = async (placeId: string, isDestination = false, placeName: string) => {
 
         if (focusedField) {
@@ -293,83 +293,82 @@ export default function ClientSearchMapScreen() {
     }
 
 
-    //implementacion dibujar ruta
-    const fetchRoute = async () => {
-        setAdress("restring")
-        if (!origin || !destination) {
-            Alert.alert("⚠️ Debes seleccionar un origen y un destino.");
-            return;
-        }
+   //implementacion dibujar ruta
+   const fetchRoute = async () => {
+    if (!origin || !destination) {
+        console.log("⚠️ Debes seleccionar un origen y un destino.");
+        return;
+    }
 
-        try {
-            const response = await fetch("https://routes.googleapis.com/directions/v2:computeRoutes", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-Goog-Api-Key": API_KEY,
-                    "X-Goog-FieldMask": "routes.duration,routes.distanceMeters,routes.polyline",
+    try {
+        const response = await fetch("https://routes.googleapis.com/directions/v2:computeRoutes", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-Goog-Api-Key": API_KEY,
+                "X-Goog-FieldMask": "routes.duration,routes.distanceMeters,routes.polyline",
+            },
+            body: JSON.stringify({
+                origin: {
+                    location: {
+                        latLng: {
+                            latitude: parseFloat(origin.lat), // Se usa la variable origin
+                            longitude: parseFloat(origin.lng)
+                        }
+                    }
                 },
-                body: JSON.stringify({
-                    origin: {
-                        location: {
-                            latLng: {
-                                latitude: parseFloat(origin.lat), // Se usa la variable origin
-                                longitude: parseFloat(origin.lng)
-                            }
+                destination: {
+                    location: {
+                        latLng: {
+                            latitude: parseFloat(destination.lat), // Se usa la variable destination
+                            longitude: parseFloat(destination.lng)
                         }
-                    },
-                    destination: {
-                        location: {
-                            latLng: {
-                                latitude: parseFloat(destination.lat), // Se usa la variable destination
-                                longitude: parseFloat(destination.lng)
-                            }
-                        }
-                    },
-                    travelMode: "DRIVE"
-                })
+                    }
+                },
+                travelMode: "DRIVE"
+            })
+        });
+
+        const result = await response.json();
+        console.log("Ruta calculada:", result);
+
+        if (result.routes && result.routes.length > 0) {
+            const route = result.routes[0];
+
+            console.log("Duración:", route.duration);
+            console.log("Distancia:", route.distanceMeters, "metros");
+
+            // Decodificar la polyline y almacenarla en el estado
+            const decodedPolyline = polyline.decode(route.polyline.encodedPolyline);
+            setRouteData({ polyline: decodedPolyline, distance: route.distanceMeters, duration: route.duration });
+
+            if (mapRef.current && decodedPolyline.length > 0) {
+                mapRef.current.fitToCoordinates(decodedPolyline, {
+                    edgePadding: { top: 50, right: 50, bottom: 50, left: 50 }, // Espacio alrededor de la ruta
+                    animated: false, // Suaviza la animación
+                });
+            }
+
+
+            <Polyline
+                coordinates={decodedPolyline}
+                strokeColor="blue" // Cambia el color a uno más visible
+                strokeWidth={6} // Aumenta el grosor de la línea
+            />
+
+            mapRef.current?.fitToCoordinates(decodedPolyline, {
+                edgePadding: { top: 100, right: 100, bottom: 100, left: 100 },
+                animated: false,
             });
 
-            const result = await response.json();
-            console.log("Ruta calculada:", result);
 
-            if (result.routes && result.routes.length > 0) {
-                const route = result.routes[0];
-
-                console.log("Duración:", route.duration);
-                console.log("Distancia:", route.distanceMeters, "metros");
-
-                // Decodificar la polyline y almacenarla en el estado
-                const decodedPolyline = polyline.decode(route.polyline.encodedPolyline);
-                setRouteData({ polyline: decodedPolyline, distance: route.distanceMeters, duration: route.duration });
-
-                if (mapRef.current && decodedPolyline.length > 0) {
-                    mapRef.current.fitToCoordinates(decodedPolyline, {
-                        edgePadding: { top: 50, right: 50, bottom: 50, left: 50 }, // Espacio alrededor de la ruta
-                        animated: true, // Suaviza la animación
-                    });
-                }
-
-
-                <Polyline
-                    coordinates={decodedPolyline}
-                    strokeColor="red" // Cambia el color a uno más visible
-                    strokeWidth={6} // Aumenta el grosor de la línea
-                />
-
-                mapRef.current?.fitToCoordinates(decodedPolyline, {
-                    edgePadding: { top: 100, right: 100, bottom: 100, left: 100 },
-                    animated: true,
-                });
-
-
-            } else {
-                console.log("⚠️ No se pudo calcular la ruta.");
-            }
-        } catch (error) {
-            console.error("⚠️ Error obteniendo la ruta:", error);
+        } else {
+            console.log("⚠️ No se pudo calcular la ruta.");
         }
-    };
+    } catch (error) {
+        console.error("⚠️ Error obteniendo la ruta:", error);
+    }
+};
 
 
 
@@ -395,6 +394,8 @@ export default function ClientSearchMapScreen() {
                     onTouchStart={() => setIsInteractingWithMap(true)}  // Ocultar controles al tocar el mapa
                     onTouchEnd={() => setIsInteractingWithMap(false)}
                     initialRegion={location}
+                    paddingAdjustmentBehavior="automatic"
+                    mapPadding={{ top: 0, right: 0, bottom: 100, left: 0 }} // Agrega padding en la parte superior
                     onRegionChangeComplete={(region) => {
                         setLocation(region);
                         fetchAddress(region.latitude, region.longitude, focusedField);
@@ -411,7 +412,7 @@ export default function ClientSearchMapScreen() {
                                     longitude: point[1],
                                 }))}
                                 strokeWidth={5}
-                                strokeColor="blue"
+                                strokeColor="green"
                             />
 
                             {/* Marcador de inicio */}
@@ -445,170 +446,179 @@ export default function ClientSearchMapScreen() {
             </View>
 
             {/* Contenedor de elementos en la parte inferior */}
-            <Animated.View 
+            <Animated.View
                 style={[
-                    styles.controlsContainerA, 
-                    { 
+                    styles.controlsContainerA,
+                    {
                         opacity: fadeAnim,
                         transform: [{ translateY: translateYAnim }]
                     }
                 ]}
             >
-            <LinearGradient
-                colors={['#000000', '#333333', '#666666', '#000000']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={{ width: "100%", borderTopLeftRadius: 20, borderTopRightRadius: 20 }}
-            >
-                <View style={styles.controlsContainer}>
-                    {/* Campo para la dirección de origen */}
+                <LinearGradient
+                    colors={['#000000', '#333333', '#666666', '#000000']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={{ width: "100%", borderTopLeftRadius: 20, borderTopRightRadius: 20 }}
+                >
+                    <View style={styles.controlsContainer}>
+                        {/* Campo para la dirección de origen */}
 
 
-                    <View style={styles.containersuggestion}>
+                        <View style={styles.containersuggestion}>
 
-                        <View style={[styles.rutaContainer, ocultarData === "ok" && { display: "none" }]}>
-                            <Image source={require('../../../../assets/image-ruta.png')} style={styles.imgRuta} />
-                        </View>
-                        <View style={styles.containersuggestion_inputs}>
-                            <TextInput
-                                style={[styles.input_O]}
-                                placeholder="Recoger en..."
-                                placeholderTextColor="#A8A8A8"
-                                value={input}
-                                onFocus={() => setFocusedField("origin")}
-                                onChangeText={(text) => {
-                                    setInput(text);
+                            <View style={[styles.rutaContainer, ocultarData === "ok" && { display: "none" }]}>
+                                <Image source={require('../../../../assets/image-ruta.png')} style={styles.imgRuta} />
+                            </View>
+                            <View style={styles.containersuggestion_inputs}>
+                                <TextInput
+                                    style={[styles.input_O]}
+                                    placeholder="Recoger en..."
+                                    placeholderTextColor="#A8A8A8"
+                                    value={input}
+                                    onFocus={() => setFocusedField("origin")}
+                                    onChangeText={(text) => {
+                                        setInput(text);
 
-                                    fetchAutocompleteSuggestions(text);
-                                    setFocusedField("origin")
-                                }}
-                            />
-                            {suggestions.length > 0 && (
-                                <FlatList
-                                    data={suggestions}
-                                    keyExtractor={(item) => item.placePrediction.placeId}
-                                    keyboardShouldPersistTaps="handled"
-                                    renderItem={({ item }) => {
-                                        const mainText = item.placePrediction.structuredFormat?.mainText?.text || "Sin nombre";
-                                        const secondaryText = item.placePrediction.structuredFormat?.secondaryText?.text || "Sin ubicación";
-
-                                        return (
-                                            <TouchableOpacity
-                                                onPress={debounce(() => {
-                                                    Keyboard.dismiss(); // Oculta el teclado
-                                                    setOcultarData("none");
-                                                    fetchPlaceDetails(
-                                                        item.placePrediction.placeId,
-                                                        false,
-                                                        mainText || "Ubicación desconocida"
-                                                    );
-                                                }, 200)}
-                                            >
-                                                <View style={styles.suggestionItem}>
-                                                    <Text style={styles.suggestionTextBold}>{mainText}</Text>
-                                                    <Text style={styles.suggestionText}>{secondaryText}</Text>
-                                                </View>
-                                            </TouchableOpacity>
-                                        );
+                                        fetchAutocompleteSuggestions(text);
+                                        setFocusedField("origin")
                                     }}
                                 />
-                            )}
+                                {suggestions.length > 0 && (
+                                    <FlatList
+                                        data={suggestions}
+                                        keyExtractor={(item) => item.placePrediction.placeId}
+                                        keyboardShouldPersistTaps="handled"
+                                        renderItem={({ item }) => {
+                                            const mainText = item.placePrediction.structuredFormat?.mainText?.text || "Sin nombre";
+                                            const secondaryText = item.placePrediction.structuredFormat?.secondaryText?.text || "Sin ubicación";
 
-                            {/* Campo para la dirección de destino */}
-                            <TextInput
-                                style={styles.input_D}
-                                placeholder="Destino..."
-                                placeholderTextColor="#A8A8A8"
-                                value={destinationInput}
+                                            return (
+                                                <TouchableOpacity
+                                                    onPress={debounce(() => {
+                                                        Keyboard.dismiss(); // Oculta el teclado
+                                                        setOcultarData("none");
+                                                        fetchPlaceDetails(
+                                                            item.placePrediction.placeId,
+                                                            false,
+                                                            mainText || "Ubicación desconocida"
+                                                        );
+                                                    }, 200)}
+                                                >
+                                                    <View style={styles.suggestionItem}>
+                                                        <Text style={styles.suggestionTextBold}>{mainText}</Text>
+                                                        <Text style={styles.suggestionText}>{secondaryText}</Text>
+                                                    </View>
+                                                </TouchableOpacity>
+                                            );
+                                        }}
+                                    />
+                                )}
 
-                                onChangeText={(text) => {
-                                    setDestinationInput(text);
-                                    fetchAutocompleteSuggestions(text, true);
-                                    setFocusedField("destination")
-                                }}
-                            />
-                            {destinationSuggestions.length > 0 && (
-                                <FlatList
-                                    data={destinationSuggestions}
-                                    keyExtractor={(item) => item.placePrediction.placeId}
-                                    keyboardShouldPersistTaps="handled"
-                                    renderItem={({ item }) => {
-                                        const destinationMainText = item.placePrediction.structuredFormat?.mainText?.text || "Sin nombre";
-                                        const destinationSecondaryText = item.placePrediction.structuredFormat?.secondaryText?.text || "Sin ubicación";
+                                {/* Campo para la dirección de destino */}
+                                <TextInput
+                                    style={styles.input_D}
+                                    placeholder="Destino..."
+                                    placeholderTextColor="#A8A8A8"
+                                    value={destinationInput}
 
-                                        return (
-                                            <TouchableOpacity
-                                                onPress={debounce(() => {
-                                                    Keyboard.dismiss();   //oculta tecaldo
-                                                    setOcultarData("none");
-                                                    fetchPlaceDetails(
-                                                        item.placePrediction.placeId,
-                                                        true,
-                                                        destinationMainText || "Ubicación desconocida"
-                                                    )
-                                                }, 200)}
-                                            >
-                                                <View style={styles.suggestionItem}>
-                                                    <Text style={styles.suggestionTextBold}>{destinationMainText}</Text>
-                                                    <Text style={styles.suggestionText}>{destinationSecondaryText}</Text>
-                                                </View>
-                                            </TouchableOpacity>
-                                        );
+                                    onChangeText={(text) => {
+                                        setDestinationInput(text);
+                                        fetchAutocompleteSuggestions(text, true);
+                                        setFocusedField("destination")
                                     }}
                                 />
-                            )}
+                                {destinationSuggestions.length > 0 && (
+                                    <FlatList
+                                        data={destinationSuggestions}
+                                        keyExtractor={(item) => item.placePrediction.placeId}
+                                        keyboardShouldPersistTaps="handled"
+                                        renderItem={({ item }) => {
+                                            const destinationMainText = item.placePrediction.structuredFormat?.mainText?.text || "Sin nombre";
+                                            const destinationSecondaryText = item.placePrediction.structuredFormat?.secondaryText?.text || "Sin ubicación";
+
+                                            return (
+                                                <TouchableOpacity
+                                                    onPress={debounce(() => {
+                                                        Keyboard.dismiss();   //oculta tecaldo
+                                                        setOcultarData("none");
+                                                        fetchPlaceDetails(
+                                                            item.placePrediction.placeId,
+                                                            true,
+                                                            destinationMainText || "Ubicación desconocida"
+                                                        )
+                                                    }, 200)}
+                                                >
+                                                    <View style={styles.suggestionItem}>
+                                                        <Text style={styles.suggestionTextBold}>{destinationMainText}</Text>
+                                                        <Text style={styles.suggestionText}>{destinationSecondaryText}</Text>
+                                                    </View>
+                                                </TouchableOpacity>
+                                            );
+                                        }}
+                                    />
+                                )}
+                            </View>
+                        </View>
+
+
+
+                        <View style={[styles.containerTargetas, ocultarData === "ok" && { display: "none" }]}>
+                            {/* Tarjeta de duración */}
+                            <View style={styles.card}>
+                                <Image source={require('../../../../assets/duracion.png')} style={styles.Img_card} />
+                                <Text style={styles.label}>Duración</Text>
+                                <Text style={styles.value}>
+                                    {routeData?.duration ? (Number(routeData.duration.slice(0, -1)) / 60).toFixed(1) : "0"} min
+                                </Text>
+                            </View>
+
+                            {/* Tarjeta de distancia */}
+                            <View >
+                                <TouchableOpacity
+                                    onPress={() => setIsDetailsModalVisible(true)}
+                                    style={styles.button}>
+                                    <Text style={{ color: 'white', fontSize: 16 }}>Agregar detalles </Text>
+                                </TouchableOpacity>
+
+
+
+                                <TouchableOpacity
+                                    onPress={fetchRoute}
+                                    style={styles.button} >
+                                    <Text style={{ color: 'white', fontSize: 16 }}>Hecho </Text>
+                                </TouchableOpacity>
+
+
+
+
+
+                            </View>
+
+                            <DetailsModal
+                                isVisible={isDetailsModalVisible}
+                                onClose={() => setIsDetailsModalVisible(false)}
+                                onDetailsSubmit={(value) => {
+                                    setDetails(value);
+                                    setIsDetailsModalVisible(false);
+                                    console.log(details)
+                                }}
+                            />
+                            {/* Tarjeta de precio */}
+                            <View style={styles.card}>
+                                <Image source={require('../../../../assets/pesos.png')} style={styles.Img_card} />
+                                <Text style={styles.label}>Tarifa</Text>
+                                <Text style={styles.price}>
+                                    {calcularPrecio(routeData?.distance ?? 0, routeData?.duration ?? "0s")}
+                                </Text>
+                            </View>
+                        </View >
+                        <View style={[ocultarData === "ok" && { display: "none" }]}>
+
+                            <DefaultRoundedButton text="Buscar conductor" onPress={fetchRoute} />
                         </View>
                     </View>
-
-
-
-                    <View style={[styles.containerTargetas, ocultarData === "ok" && { display: "none" }]}>
-                        {/* Tarjeta de duración */}
-                        <View style={styles.card}>
-                            <Image source={require('../../../../assets/duracion.png')} style={styles.Img_card} />
-                            <Text style={styles.label}>Duración</Text>
-                            <Text style={styles.value}>
-                                {routeData?.duration ? (Number(routeData.duration.slice(0, -1)) / 60).toFixed(1) : "0"} min
-                            </Text>
-                        </View>
-
-                        {/* Tarjeta de distancia */}
-                        <View >
-                            <DefaultRoundedButton
-                                text={offer ? `${offer.toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : "Ofertar"}
-                                onPress={() => setIsOfferModalVisible(true)}
-                                padding={10}
-                                fontSize={15} // Hace el texto más grande
-                            />
-                            <DefaultRoundedButton
-                                text="Hecho"
-                                onPress={fetchRoute}
-                                padding={10}
-                                fontSize={15}
-                            />
-
-                        </View>
-
-                        <OfferModal
-                            isVisible={isOfferModalVisible}
-                            onClose={() => setIsOfferModalVisible(false)}
-                            onOfferSubmit={(value) => {
-                                setOffer(value);
-                                setIsOfferModalVisible(false);
-                            }}
-                        />
-                        {/* Tarjeta de precio */}
-                        <View style={styles.card}>
-                            <Image source={require('../../../../assets/pesos.png')} style={styles.Img_card} />
-                            <Text style={styles.label}>Tarifa</Text>
-                            <Text style={styles.price}>
-                                {calcularPrecio(routeData?.distance ?? 0, routeData?.duration ?? "0s")}
-                            </Text>
-                        </View>
-                    </View>
-                    <DefaultRoundedButton text="Buscar conductor" onPress={fetchRoute} />
-                </View>
-            </LinearGradient>
+                </LinearGradient>
             </Animated.View>
         </View>
     );

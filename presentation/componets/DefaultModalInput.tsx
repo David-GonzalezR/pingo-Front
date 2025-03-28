@@ -1,19 +1,18 @@
 import React, { useState } from "react";
 import { View, Text, Modal, TextInput, TouchableOpacity, StyleSheet } from "react-native";
 
-interface OfferModalProps {
+interface DetailsModalProps {
     isVisible: boolean;
     onClose: () => void;
-    onOfferSubmit: (value: number) => void;
+    onDetailsSubmit: (details: string) => void;
 }
 
-const OfferModal: React.FC<OfferModalProps> = ({ isVisible, onClose, onOfferSubmit }) => {
-    const [offer, setOffer] = useState<string>("");
+const DetailsModal: React.FC<DetailsModalProps> = ({ isVisible, onClose, onDetailsSubmit }) => {
+    const [details, setDetails] = useState<string>("");
 
     const handleSubmit = () => {
-        const offerValue = parseFloat(offer);
-        if (!isNaN(offerValue)) {
-            onOfferSubmit(offerValue);
+        if (details.trim().length > 0) {
+            onDetailsSubmit(details); // Enviar el texto directamente
             onClose();
         }
     };
@@ -22,15 +21,17 @@ const OfferModal: React.FC<OfferModalProps> = ({ isVisible, onClose, onOfferSubm
         <Modal transparent={true} visible={isVisible} animationType="slide">
             <View style={styles.modalContainer}>
                 <View style={styles.modalContent}>
-                    <Text style={styles.modalTitle}>💰 Ingresa tu oferta</Text>
-                    
-                    {/* Campo para ingresar la oferta */}
+                    <Text style={styles.modalTitle}>Ingresa todos los detalles del servicio</Text>
+
+                    {/* Campo para ingresar detalles */}
                     <TextInput
                         style={styles.input}
-                        keyboardType="numeric"
-                        placeholder="Ingrese su oferta"
-                        value={offer}
-                        onChangeText={setOffer}
+                        keyboardType="default"
+                        placeholder="Ingrese los detalles del servicio..."
+                        value={details}
+                        onChangeText={setDetails}
+                        multiline={true} // Permite múltiples líneas
+                        numberOfLines={6} // Muestra 6 líneas de texto
                     />
 
                     {/* Botones */}
@@ -60,13 +61,15 @@ const styles = StyleSheet.create({
         backgroundColor: "white",
         padding: 20,
         borderRadius: 10,
-        width: "80%",
+        width: "90%", // Más ancho
+        minHeight: "50%", // Más alto
         alignItems: "center",
     },
     modalTitle: {
-        fontSize: 18,
+        fontSize: 20,
         fontWeight: "bold",
-        marginBottom: 10,
+        marginBottom: 15,
+        textAlign: "center",
     },
     input: {
         width: "100%",
@@ -75,8 +78,9 @@ const styles = StyleSheet.create({
         borderRadius: 5,
         padding: 10,
         fontSize: 16,
-        marginBottom: 10,
-        textAlign: "center",
+        marginBottom: 15,
+        textAlignVertical: "top", // Alinea el texto arriba
+        minHeight: 120, // Ajuste del tamaño
     },
     buttonContainer: {
         flexDirection: "row",
@@ -85,7 +89,7 @@ const styles = StyleSheet.create({
     },
     button: {
         flex: 1,
-        paddingVertical: 10,
+        paddingVertical: 12,
         alignItems: "center",
         borderRadius: 8,
     },
@@ -104,4 +108,4 @@ const styles = StyleSheet.create({
     },
 });
 
-export default OfferModal;
+export default DetailsModal;

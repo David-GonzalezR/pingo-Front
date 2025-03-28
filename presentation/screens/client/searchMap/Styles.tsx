@@ -6,11 +6,12 @@ export const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F5F5F5", // Negro elegante con un toque moderno
-    
+
   },
   mapContainer: {
     flex: 1,
     borderColor: "#FF3B3B", // Borde rojo vibrante
+    
   },
   map: {
     ...StyleSheet.absoluteFillObject,
@@ -26,15 +27,16 @@ export const styles = StyleSheet.create({
     height: 40,
   },
   controlsContainer: {
-    padding: 20,
+    padding: 5,
+
     backgroundColor: "transparent",
     borderRadius: 15,
-    width:"100%"
+    width: "100%"
   },
   containersuggestion: {
     flexDirection: "row",
-    alignItems: "center",   
-        borderRadius: 12,
+    alignItems: "center",
+    borderRadius: 12,
     borderLeftWidth: 5,
     borderLeftColor: "#FF3B3B",
   },
@@ -44,33 +46,34 @@ export const styles = StyleSheet.create({
   },
   imgRuta: {
     width: "100%",
-    height: 90,
+    height: 70,
     resizeMode: "contain",
   },
   containersuggestion_inputs: {
+
     width: "90%",
   },
   input_O: {
-    width: "100%",    
+    width: "100%",
     fontSize: 18,
-    color: "#FFF",  
+    color: "#FFF",
     borderBottomWidth: 1,
     borderBottomColor: "#666666",
-         
+
   },
   input_D: {
-    width: "100%",    
+    width: "100%",
     fontSize: 18,
-    color: "#FFF",    
-         
+    color: "#FFF",
+
   },
   suggestionItem: {
-    padding: 15,
+    padding: 5,
     borderBottomWidth: 1,
     borderBottomColor: "#444",
   },
   suggestionTextBold: {
-    fontWeight: "bold",
+    
     fontSize: 18,
     color: "white",
   },
@@ -81,17 +84,14 @@ export const styles = StyleSheet.create({
   containerTargetas: {
     flexDirection: "row",
     justifyContent: "space-around",
-    padding: 20,
+    padding: 5,
   },
   card: {
-    padding: 5,
+    marginTop: 8,
     alignItems: "center",
-    width: "30%",
-    backgroundColor: "#1A1A1A",
-    borderRadius: 15,
-    borderWidth: 0.5,
-    borderColor: "#FF3B3B",
-    shadowColor: "#FF3B3B",    
+    width: "30%",      
+    
+    shadowColor: "white",
     shadowOpacity: 0.5,
     shadowRadius: 15,
   },
@@ -100,7 +100,7 @@ export const styles = StyleSheet.create({
     color: "#FF3B3B",
   },
   label: {
-    fontSize: 16,
+    fontSize: 1,
     color: "#EEE",
     marginTop: 8,
   },
@@ -108,7 +108,7 @@ export const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "bold",
     color: "#FFF",
-    marginTop: 1,
+
   },
   price: {
     fontSize: 24,
@@ -116,19 +116,19 @@ export const styles = StyleSheet.create({
     color: "green",
     marginTop: 1,
   },
-  Img_card:{
+  Img_card: {
     width: "100%",
     height: 50,
     resizeMode: "contain",
   },
-  
-  circleMarker: {    
-      width: 15,
-      height: 15,
-      borderRadius: 10, // Hace que sea un círculo
-      backgroundColor: 'green', // Color del marcador de origen
-      borderWidth: 2,
-      borderColor: 'white',
+
+  circleMarker: {
+    width: 15,
+    height: 15,
+    borderRadius: 10, // Hace que sea un círculo
+    backgroundColor: 'green', // Color del marcador de origen
+    borderWidth: 2,
+    borderColor: 'white',
   },
   squareMarker: {
     width: 15,
@@ -145,6 +145,13 @@ export const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.5)",
     padding: 0,
     borderRadius: 50,
-},
+  },
+  button: {
+    marginTop: 10,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    padding: 10,
+    borderRadius: 15,
+    alignItems: 'center'
+  }
 
 });
