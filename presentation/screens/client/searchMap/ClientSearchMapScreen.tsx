@@ -328,7 +328,7 @@ export default function ClientSearchMapScreen() {
         }
 
         try {
-
+            setPinImage("")
             const response = await fetch("https://routes.googleapis.com/directions/v2:computeRoutes", {
                 method: "POST",
                 headers: {
@@ -391,7 +391,7 @@ export default function ClientSearchMapScreen() {
 
 
             } else {
-                console.log("⚠️ No se pudo calcular la ruta.");
+                Alert.alert("⚠️ No se pudo calcular la ruta.");
             }
         } catch (error) {
             console.error("⚠️ Error obteniendo la ruta:", error);
@@ -421,7 +421,7 @@ export default function ClientSearchMapScreen() {
 
                     ref={mapRef}
                     style={styles.map}
-                    onTouchStart={() => setIsInteractingWithMap(true)}  // Ocultar controles al tocar el mapa
+                    onTouchStart={() =>{ setIsInteractingWithMap(true), Keyboard.dismiss()} }  // Ocultar controles al tocar el mapa
                     onTouchEnd={() => setIsInteractingWithMap(false)}
                     initialRegion={location}
                     onRegionChangeComplete={(region) => {
@@ -504,7 +504,7 @@ export default function ClientSearchMapScreen() {
                                     placeholder="Recoger en..."
                                     placeholderTextColor="#A8A8A8"
                                     value={input}
-                                    onFocus={() => setFocusedField("origin")}
+                                    onFocus={() => {setFocusedField("origin"),setOcultarData("ok")}}
                                     onChangeText={(text) => {
                                         setInput(text);
 
@@ -551,11 +551,14 @@ export default function ClientSearchMapScreen() {
                                     placeholderTextColor="#A8A8A8"
                                     value={destinationInput}
 
+                                    onFocus={() => {
+                                        setOcultarData("ok")
+                                        setFocusedField("destination"); // Indica que este campo tiene el foco
+                                        setMapActive(true); // Activa el mapa si es necesario
+                                    }}
                                     onChangeText={(text) => {
                                         setDestinationInput(text);
                                         fetchAutocompleteSuggestions(text, true);
-                                        setFocusedField("destination")
-                                        setMapActive(true);
                                     }}
                                 />
                                 {destinationSuggestions.length > 0 && (
@@ -597,7 +600,7 @@ export default function ClientSearchMapScreen() {
                             {/* Tarjeta de duración */}
                             <View style={styles.card}>
                                 <Image source={require('../../../../assets/duracion.png')} style={styles.Img_card} />
-                                <Text style={styles.label}>Duración</Text>
+                                <Text style={styles.label}>Duración del viaje</Text>
                                 <Text style={styles.value}>
                                     {routeData?.duration ? (Number(routeData.duration.slice(0, -1)) / 60).toFixed(1) : "0"} min
                                 </Text>
@@ -616,6 +619,7 @@ export default function ClientSearchMapScreen() {
                                 <TouchableOpacity
 
                                     onPress={() => {
+                                        Keyboard.dismiss(); 
                                         setMapActive(false);
                                         fetchRoute();
                                     }}
@@ -642,7 +646,7 @@ export default function ClientSearchMapScreen() {
                             {/* Tarjeta de precio */}
                             <View style={styles.card}>
                                 <Image source={require('../../../../assets/pesos.png')} style={styles.Img_card} />
-                                <Text style={styles.label}>Tarifa</Text>
+                                <Text style={styles.label}>Valor del servicio</Text>
                                 <Text style={styles.price}>
                                     {calcularPrecio(routeData?.distance ?? 0, routeData?.duration ?? "0s")}
                                 </Text>

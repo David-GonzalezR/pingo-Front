@@ -27,7 +27,8 @@ const DetailsModal: React.FC<DetailsModalProps> = ({ isVisible, onClose, onDetai
                     <TextInput
                         style={styles.input}
                         keyboardType="default"
-                        placeholder="Ingrese los detalles del servicio..."
+                        placeholder="Describe el lugar de entrega o recogida con detalles claros. Ejemplo: 'Casa azul de dos pisos, portón blanco' o 'Farmacia - medicamento x ml, marca X'."
+
                         value={details}
                         onChangeText={setDetails}
                         multiline={true} // Permite múltiples líneas

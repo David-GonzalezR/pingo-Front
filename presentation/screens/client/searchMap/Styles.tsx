@@ -10,7 +10,7 @@ export const styles = StyleSheet.create({
   },
   mapContainer: {
     flex: 1,
-       
+
   },
   map: {
     ...StyleSheet.absoluteFillObject,
@@ -53,28 +53,29 @@ export const styles = StyleSheet.create({
   },
   input_O: {
     width: "100%",
-    fontSize: 18,
+    fontSize: 14,
     color: "#FFF",
     borderBottomWidth: 1,
     borderBottomColor: "#666666",
+    
 
   },
   input_D: {
     width: "100%",
-    fontSize: 18,
+    fontSize: 14,
     color: "#FFF",
-
+   
   },
   suggestionItem: {
     padding: 8,
-    paddingLeft:20,
+    paddingLeft: 20,
     borderBottomWidth: 1,
     borderBottomColor: "#444",
   },
   suggestionTextBold: {
-    
+
     fontSize: 16,
-    color: "white",
+    color: "#E0E0E0",
   },
   suggestionText: {
     fontSize: 16,
@@ -83,14 +84,14 @@ export const styles = StyleSheet.create({
   containerTargetas: {
     flexDirection: "row",
     justifyContent: "space-around",
-    marginTop:10,
+    marginTop: 10,
     padding: 5,
   },
   card: {
     marginTop: 8,
     alignItems: "center",
-    width: "30%",      
-    
+    width: "30%",
+
     shadowColor: "white",
     shadowOpacity: 0.5,
     shadowRadius: 15,
@@ -100,12 +101,12 @@ export const styles = StyleSheet.create({
     color: "#FF3B3B",
   },
   label: {
-    fontSize: 1,
+    fontSize: 12,
     color: "#EEE",
     marginTop: 8,
   },
   value: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: "bold",
     color: "#FFF",
 
@@ -147,7 +148,7 @@ export const styles = StyleSheet.create({
     borderRadius: 50,
   },
   button: {
-    marginTop: 10,
+    margin: 8,
     backgroundColor: "rgba(0,0,0,0.5)",
     padding: 10,
     borderRadius: 15,
